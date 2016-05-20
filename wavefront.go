@@ -15,31 +15,31 @@ import (
 	"github.com/rcrowley/go-metrics"
 )
 
-// RegisterMetric Tag support for metrics.Register()
+// RegisterMetric tag support for metrics.Register()
 func RegisterMetric(key string, metric interface{}, tags map[string]string) {
 	key = EncodeKey(key, tags)
 	metrics.Register(key, metric)
 }
 
-// GetMetric Tag support for metrics.Get()
+// GetMetric tag support for metrics.Get()
 func GetMetric(key string, tags map[string]string) interface{} {
 	key = EncodeKey(key, tags)
 	return metrics.Get(key)
 }
 
-// GetOrRegisterMetric Tag support for metrics.GetOrRegister()
+// GetOrRegisterMetric tag support for metrics.GetOrRegister()
 func GetOrRegisterMetric(name string, i interface{}, tags map[string]string) interface{} {
 	key := EncodeKey(name, tags)
 	return metrics.GetOrRegister(key, i)
 }
 
-// UnregisterMetric Tag support for metrics.UnregisterMetric()
+// UnregisterMetric tag support for metrics.UnregisterMetric()
 func UnregisterMetric(name string, tags map[string]string) {
 	key := EncodeKey(name, tags)
 	metrics.Unregister(key)
 }
 
-// EncodeKey Encodes the metric name and tags into a unique key.
+// EncodeKey encodes the metric name and tags into a unique key.
 func EncodeKey(key string, tags map[string]string) string {
 	//sort the tags to ensure the key is always the same when getting or setting
 	sortedKeys := make([]string, len(tags))
@@ -58,7 +58,7 @@ func EncodeKey(key string, tags map[string]string) string {
 	return key
 }
 
-// DecodeKey Decodes a metric key into a metric name and tag string
+// DecodeKey decodes a metric key into a metric name and tag string
 func DecodeKey(key string) (string, string) {
 	if strings.Contains(key, "[") == false {
 		return key, ""
