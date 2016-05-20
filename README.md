@@ -39,4 +39,6 @@ func main() {
 			"key2": "val2",
 		})
 	c.Inc(47)
+}
 ```
+`wavefront.RegisterMetric()` has the same affect as go-metrics' `metrics.Register()` except that it accepts tags in the form of a string map. The tags are then used by the Wavefront reporter at flush time.
