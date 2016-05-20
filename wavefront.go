@@ -15,29 +15,32 @@ import (
 	"github.com/rcrowley/go-metrics"
 )
 
-// RegisterMetric A simple wrapper around go-metrics metrics.Register function
+// RegisterMetric Tag support for metrics.Register()
 func RegisterMetric(key string, metric interface{}, tags map[string]string) {
-	key = encodeKey(key, tags)
+	key = EncodeKey(key, tags)
 	metrics.Register(key, metric)
 }
 
+// GetMetric Tag support for metrics.Get()
 func GetMetric(key string, tags map[string]string) interface{} {
-	key = encodeKey(key, tags)
+	key = EncodeKey(key, tags)
 	return metrics.Get(key)
 }
 
+// GetOrRegisterMetric Tag support for metrics.GetOrRegister()
 func GetOrRegisterMetric(name string, i interface{}, tags map[string]string) interface{} {
-	key := encodeKey(name, tags)
+	key := EncodeKey(name, tags)
 	return metrics.GetOrRegister(key, i)
 }
 
+// UnregisterMetric Tag support for metrics.UnregisterMetric()
 func UnregisterMetric(name string, tags map[string]string) {
-	key := encodeKey(name, tags)
+	key := EncodeKey(name, tags)
 	metrics.Unregister(key)
 }
 
-func encodeKey(key string, tags map[string]string) string {
-
+// EncodeKey Encodes the metric name and tags into a unique key.
+func EncodeKey(key string, tags map[string]string) string {
 	//sort the tags to ensure the key is always the same when getting or setting
 	sortedKeys := make([]string, len(tags))
 	i := 0
@@ -55,7 +58,7 @@ func encodeKey(key string, tags map[string]string) string {
 	return key
 }
 
-// DecodeKey return the metric name and the tag string from a metric key
+// DecodeKey Decodes a metric key into a metric name and tag string
 func DecodeKey(key string) (string, string) {
 	if strings.Contains(key, "[") == false {
 		return key, ""
@@ -67,7 +70,7 @@ func DecodeKey(key string) (string, string) {
 	return name, tagStr
 }
 
-func HostTagString(hostTags map[string]string) string {
+func hostTagString(hostTags map[string]string) string {
 	htStr := ""
 	for k, v := range hostTags {
 		htStr += " " + k + "=\"" + v + "\""
@@ -75,7 +78,7 @@ func HostTagString(hostTags map[string]string) string {
 	return htStr
 }
 
-// WavefrontConfig provides a container with configuration parameters for
+// WavefrontConfig provides configuration parameters for
 // the Wavefront exporter
 type WavefrontConfig struct {
 	Addr          *net.TCPAddr     // Network address to connect to
@@ -87,9 +90,8 @@ type WavefrontConfig struct {
 	HostTags      map[string]string
 }
 
-// Wavefront is a blocking exporter function which reports metrics in r
-// to a wavefront server located at addr, flushing them every d duration
-// and prepending metric names with prefix.
+// Wavefront is an exporter function which reports metrics to a
+// wavefront proxy located at addr, flushing them every d duration.
 func Wavefront(r metrics.Registry, d time.Duration, ht map[string]string, prefix string, addr *net.TCPAddr) {
 	WavefrontWithConfig(WavefrontConfig{
 		Addr:          addr,
@@ -102,8 +104,7 @@ func Wavefront(r metrics.Registry, d time.Duration, ht map[string]string, prefix
 	})
 }
 
-// WavefrontWithConfig is a blocking exporter function just like Wavefront,
-// but it takes a WavefrontConfig instead.
+// WavefrontWithConfig calls Wavefront() but allows you to pass a WavefrontConfig struct
 func WavefrontWithConfig(c WavefrontConfig) {
 	for _ = range time.Tick(c.FlushInterval) {
 		if err := wavefront(&c); nil != err {
@@ -130,7 +131,7 @@ func wavefront(c *WavefrontConfig) error {
 	w := bufio.NewWriter(conn)
 	c.Registry.Each(func(name string, i interface{}) {
 		name, tagStr := DecodeKey(name)
-		tagStr += HostTagString(c.HostTags)
+		tagStr += hostTagString(c.HostTags)
 		switch metric := i.(type) {
 		case metrics.Counter:
 			fmt.Fprintf(w, "%s.%s.count %d %d %s\n", c.Prefix, name, metric.Count(), now, tagStr)
