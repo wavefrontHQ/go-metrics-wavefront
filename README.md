@@ -1,5 +1,5 @@
 
-This is a plugin for [go-metrics](https://github.com/rcrowley/go-metrics) that adds a reporter for Wavefront and a simple abstraction for supporting tags.
+This is a plugin for [go-metrics](https://github.com/rcrowley/go-metrics) which Wavefront reporter and a simple abstraction that supports tagging at the host and metric level.
 
 ### Usage
 
