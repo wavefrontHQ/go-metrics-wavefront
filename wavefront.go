@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -16,13 +17,43 @@ import (
 
 // RegisterMetric A simple wrapper around go-metrics metrics.Register function
 func RegisterMetric(key string, metric interface{}, tags map[string]string) {
+	key = encodeKey(key, tags)
+	metrics.Register(key, metric)
+}
+
+func GetMetric(key string, tags map[string]string) interface{} {
+	key = encodeKey(key, tags)
+	return metrics.Get(key)
+}
+
+func GetOrRegisterMetric(name string, i interface{}, tags map[string]string) interface{} {
+	key := encodeKey(name, tags)
+	return metrics.GetOrRegister(key, i)
+}
+
+func UnregisterMetric(name string, tags map[string]string) {
+	key := encodeKey(name, tags)
+	metrics.Unregister(key)
+}
+
+func encodeKey(key string, tags map[string]string) string {
+
+	//sort the tags to ensure the key is always the same when getting or setting
+	sortedKeys := make([]string, len(tags))
+	i := 0
+	for k, _ := range tags {
+		sortedKeys[i] = k
+		i++
+	}
+	sort.Strings(sortedKeys)
 	keyAppend := "["
-	for k, v := range tags {
-		keyAppend += " " + k + "=\"" + v + "\""
+	for i := range sortedKeys {
+		keyAppend += " " + sortedKeys[i] + "=\"" + tags[sortedKeys[i]] + "\""
 	}
 	keyAppend += "]"
 	key += keyAppend
-	metrics.Register(key, metric)
+	fmt.Println(key)
+	return key
 }
 
 // DecodeKey return the metric name and the tag string from a metric key

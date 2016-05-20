@@ -15,8 +15,11 @@ func main() {
 	c := metrics.NewCounter()
 	wavefront.RegisterMetric(
 		"foo", c, map[string]string{
-			"key1": "val1",
-			"key2": "val2",
+			"key2": "val1",
+			"key1": "val2",
+			"key0": "val0",
+			"key4": "val4",
+			"key3": "val3",
 		})
 
 	c.Inc(47)
