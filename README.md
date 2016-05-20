@@ -43,6 +43,8 @@ func main() {
 ```
 `wavefront.RegisterMetric()` has the same affect as go-metrics' `metrics.Register()` except that it accepts tags in the form of a string map. The tags are then used by the Wavefront reporter at flush time. The tags becomes part of the key for a metric. Every unique combination of metric name+tags is a unique metric. You can pass your tags in any order to the Register and Get functions documented below. The Wavefront plugin ensures they are always encoded in the same order to ensure no duplication of metrics.
 
+[Go Docs](https://github.com/wavefrontHQ/go-metrics-wavefront/blob/master/GODOCS.md)
+
 #### Extended Code Example
 
 ```go
