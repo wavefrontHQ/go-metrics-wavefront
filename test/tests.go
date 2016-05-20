@@ -30,7 +30,7 @@ func main() {
 	m2 := wavefront.GetMetric("foo", tags)
 	fmt.Println(m2) // will print &{47}
 
-	// Retrive it using wavefront.GetOrRegisterMetric instead of metrics.GetOrRegister if there are tags.
+	// Retreive it using wavefront.GetOrRegisterMetric instead of metrics.GetOrRegister if there are tags.
 	m3 := wavefront.GetOrRegisterMetric("foo", c, tags)
 	fmt.Println(m3) // will print &{47}
 
