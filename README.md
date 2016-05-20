@@ -22,7 +22,7 @@ func main() {
 ```
 #### Tagging Metrics
 
-In addition to tagging at the host level, you can add tags to individual metics.
+In addition to tagging at the host level, you can add tags to individual metrics.
 
 ```go
 import (

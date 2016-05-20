@@ -1,5 +1,6 @@
 // temp
 
+// Package wavefront is a plugin for go-metrics that provides a Wavefront reporter and tag support at the host and metric level.
 package wavefront
 
 import (
