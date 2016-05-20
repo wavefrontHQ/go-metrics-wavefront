@@ -15,8 +15,8 @@ func main() {
 	c := metrics.NewCounter()
 	//Tags we'll add to the metric
 	tags := map[string]string{
-		"key2": "val1",
-		"key1": "val2",
+		"key2": "val2",
+		"key1": "val1",
 		"key0": "val0",
 		"key4": "val4",
 		"key3": "val3",
@@ -30,16 +30,28 @@ func main() {
 	m2 := wavefront.GetMetric("foo", tags)
 	fmt.Println(m2) // will print &{47}
 
+	//Try retrieving it with the same tags but in a different order
+	tags2 := map[string]string{
+		"key4": "val4",
+		"key2": "val2",
+		"key3": "val3",
+		"key0": "val0",
+		"key1": "val1",
+	}
+	m3 := wavefront.GetMetric("foo", tags2)
+	fmt.Println("Getting with tags in different order:")
+	fmt.Println(m3)
+
 	// Retreive it using wavefront.GetOrRegisterMetric instead of metrics.GetOrRegister if there are tags.
-	m3 := wavefront.GetOrRegisterMetric("foo", c, tags)
-	fmt.Println(m3) // will print &{47}
+	m4 := wavefront.GetOrRegisterMetric("foo", c, tags)
+	fmt.Println(m4) // will print &{47}
 
 	//Let's remove the metric now
 	wavefront.UnregisterMetric("foo", tags)
 
 	//Try to get it after unregistering
-	m4 := wavefront.GetMetric("foo", tags)
-	fmt.Println(m4) // will print <nil>
+	m5 := wavefront.GetMetric("foo", tags)
+	fmt.Println(m5) // will print <nil>
 
 	//Lets add it again and send it to Wavefront
 	wavefront.RegisterMetric("foo", c, tags)
