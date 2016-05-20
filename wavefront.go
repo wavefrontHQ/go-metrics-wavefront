@@ -52,7 +52,6 @@ func encodeKey(key string, tags map[string]string) string {
 	}
 	keyAppend += "]"
 	key += keyAppend
-	fmt.Println(key)
 	return key
 }
 

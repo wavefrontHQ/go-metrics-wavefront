@@ -1,9 +1,8 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"net"
-	"os"
 	"time"
 
 	"github.com/rcrowley/go-metrics"
@@ -12,47 +11,54 @@ import (
 
 func main() {
 
+	//Create a counter
 	c := metrics.NewCounter()
-	wavefront.RegisterMetric(
-		"foo", c, map[string]string{
-			"key2": "val1",
-			"key1": "val2",
-			"key0": "val0",
-			"key4": "val4",
-			"key3": "val3",
-		})
-
+	//Tags we'll add to the metric
+	tags := map[string]string{
+		"key2": "val1",
+		"key1": "val2",
+		"key0": "val0",
+		"key4": "val4",
+		"key3": "val3",
+	}
+	// Register it using wavefront.RegisterMetric instead of metrics.Register if there are tags
+	wavefront.RegisterMetric("foo", c, tags)
 	c.Inc(47)
 
-	g := metrics.NewGauge()
-	metrics.Register("bar", g)
-	g.Update(47)
+	// Retreive it using our key and tags.
+	// Any unique set of key+tags will be a unique series and thus a unique metric
+	m2 := wavefront.GetMetric("foo", tags)
+	fmt.Println(m2) // will print &{47}
 
-	s := metrics.NewExpDecaySample(1028, 0.015) // or metrics.NewUniformSample(1028)
-	h := metrics.NewHistogram(s)
-	metrics.Register("baz", h)
-	h.Update(47)
+	// Retrive it using wavefront.GetOrRegisterMetric instead of metrics.GetOrRegister if there are tags.
+	m3 := wavefront.GetOrRegisterMetric("foo", c, tags)
+	fmt.Println(m3) // will print &{47}
 
-	m := metrics.NewMeter()
-	metrics.Register("quux", m)
-	m.Mark(47)
+	//Let's remove the metric now
+	wavefront.UnregisterMetric("foo", tags)
 
-	t := metrics.NewTimer()
-	metrics.Register("bang", t)
-	t.Time(func() {})
-	t.Update(47)
+	//Try to get it after unregistering
+	m4 := wavefront.GetMetric("foo", tags)
+	fmt.Println(m4) // will print <nil>
 
+	//Lets add it again and send it to Wavefront
+	wavefront.RegisterMetric("foo", c, tags)
+	c.Inc(47)
+
+	// Set the address of the Wavefront Proxy
 	addr, _ := net.ResolveTCPAddr("tcp", "192.168.99.100:2878")
 
+	// Tags can be passed to the host as well (each tag will get applied to every metric)
 	hostTags := map[string]string{
 		"source": "go-metrics-test",
 	}
+
 	go wavefront.Wavefront(metrics.DefaultRegistry, 1*time.Second, hostTags, "some.prefix", addr)
 
-	go metrics.Log(metrics.DefaultRegistry, 5*time.Second, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
+	fmt.Println("Search wavefront: ts(\"some.prefix.foo.count\")")
 
+	fmt.Println("Entering loop to simulate metrics flushing. Hit ctrl+c to cancel")
 	for {
-
 	}
 
 }
