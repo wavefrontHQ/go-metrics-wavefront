@@ -73,8 +73,8 @@ func main() {
 	wavefront.RegisterMetric("foo", c, tags)
 	c.Inc(47)
 
-	// Retreive it using our key and tags.
-	// Any unique set of key+tags will be a unique series and thus a unique metric
+	// Retreive it using metric name and tags.
+	// Any unique set of name+tags will be a unique series and thus a unique metric
 	m2 := wavefront.GetMetric("foo", tags)
 	fmt.Println(m2) // will print &{47}
 
