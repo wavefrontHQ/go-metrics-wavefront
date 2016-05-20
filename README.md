@@ -13,9 +13,30 @@ import (
 	"github.com/wavefronthq/go-metrics-wavefront"
 )
 
-hostTags := map[string]string{
-  "source": "go-metrics-test",
+func main() {
+  hostTags := map[string]string{
+    "source": "go-metrics-test",
+  }
+  go wavefront.Wavefront(metrics.DefaultRegistry, 1*time.Second, hostTags, "some.prefix", addr)
 }
-go wavefront.Wavefront(metrics.DefaultRegistry, 1*time.Second, hostTags, "some.prefix", addr)
+```
+#### Tagging Metrics
 
+In addition to tagging at the host level, you can add tags to individual metics.
+
+```go
+import (
+	"github.com/rcrowley/go-metrics"
+	"github.com/wavefronthq/go-metrics-wavefront"
+)
+
+func main() {
+
+	c := metrics.NewCounter()
+	wavefront.RegisterMetric(
+		"foo", c, map[string]string{
+			"key1": "val1",
+			"key2": "val2",
+		})
+	c.Inc(47)
 ```
