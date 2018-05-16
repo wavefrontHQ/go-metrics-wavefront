@@ -2,12 +2,23 @@ package main
 
 import (
 	"fmt"
-	"net"
-	"time"
+	//"net"
+	//"time"
 
 	"github.com/rcrowley/go-metrics"
 	"github.com/wavefronthq/go-metrics-wavefront"
+	"time"
+	"net"
 )
+
+func directConfig(server, token string, ht map[string]string) *wavefront.WavefrontConfig {
+	return &wavefront.WavefrontConfig{
+		DirectReporter: wavefront.NewDirectReporter(server, token),
+		Prefix: "direct.prefix",
+		HostTags: ht,
+		Percentiles: []float64{0.5, 0.75, 0.95, 0.99, 0.999},
+	}
+}
 
 func main() {
 
@@ -57,20 +68,31 @@ func main() {
 	wavefront.RegisterMetric("foo", c, tags)
 	c.Inc(47)
 
+	deltaCounter := metrics.NewCounter()
+	wavefront.RegisterMetric(wavefront.DeltaCounterName("∆delta.metric"), deltaCounter, tags)
+	deltaCounter.Inc(10)
+
 	// Set the address of the Wavefront Proxy
-	addr, _ := net.ResolveTCPAddr("tcp", "192.168.99.100:2878")
+	addr, _ := net.ResolveTCPAddr("tcp", "localhost:2878")
 
 	// Tags can be passed to the host as well (each tag will get applied to every metric)
 	hostTags := map[string]string{
 		"source": "go-metrics-test",
 	}
 
-	go wavefront.Wavefront(metrics.DefaultRegistry, 1*time.Second, hostTags, "some.prefix", addr)
+	go wavefront.WavefrontProxy(metrics.DefaultRegistry, 1*time.Second, hostTags, "proxy.prefix", addr)
+
+	// Set the server and token for direct ingestion
+	server := "https://clusterName.wavefront.com"
+	token := "ENTER_TOKEN_HERE"
+	directCfg := directConfig(server, token, hostTags)
+	wavefront.WavefrontSingleMetric(directCfg, "single.metric", c, nil)
+
+	go wavefront.WavefrontDirect(metrics.DefaultRegistry, 5*time.Second, hostTags, "direct.prefix", server, token)
 
 	fmt.Println("Search wavefront: ts(\"some.prefix.foo.count\")")
 
 	fmt.Println("Entering loop to simulate metrics flushing. Hit ctrl+c to cancel")
-	for {
+	select{
 	}
-
 }
