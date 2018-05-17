@@ -12,9 +12,9 @@ import (
 func directConfig(server, token string, ht map[string]string) *wavefront.WavefrontConfig {
 	return &wavefront.WavefrontConfig{
 		DirectReporter: wavefront.NewDirectReporter(server, token),
-		Prefix: "direct.prefix",
-		HostTags: ht,
-		Percentiles: []float64{0.5, 0.75, 0.95, 0.99, 0.999},
+		Prefix:         "direct.prefix",
+		HostTags:       ht,
+		Percentiles:    []float64{0.5, 0.75, 0.95, 0.99, 0.999},
 	}
 }
 
@@ -91,6 +91,5 @@ func main() {
 	fmt.Println("Search wavefront: ts(\"some.prefix.foo.count\")")
 
 	fmt.Println("Entering loop to simulate metrics flushing. Hit ctrl+c to cancel")
-	select{
-	}
+	select {}
 }
