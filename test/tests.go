@@ -2,13 +2,11 @@ package main
 
 import (
 	"fmt"
-	//"net"
-	//"time"
+	"net"
+	"time"
 
 	"github.com/rcrowley/go-metrics"
 	"github.com/wavefronthq/go-metrics-wavefront"
-	"time"
-	"net"
 )
 
 func directConfig(server, token string, ht map[string]string) *wavefront.WavefrontConfig {
