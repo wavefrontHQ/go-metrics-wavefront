@@ -8,7 +8,6 @@ go:
   - "1.10.x"
   - master 
 
-
 install:
   - # Skip
 
