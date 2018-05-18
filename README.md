@@ -104,9 +104,15 @@ func main() {
     "source": "go-metrics-test",
   }
 
-  go wavefront.Wavefront(metrics.DefaultRegistry, 1*time.Second, hostTags, "some.prefix", addr)
+  go wavefront.WavefrontProxy(metrics.DefaultRegistry, 1*time.Second, hostTags, "some.prefix", addr)
+
+  // Send metrics directly to a wavefront server
+  server := "https://clusterName.wavefront.com"
+  token := "ENTER_TOKEN_HERE"
+  go wavefront.WavefrontDirect(metrics.DefaultRegistry, 5*time.Second, hostTags, "direct.prefix", server, token)
 
   fmt.Println("Search wavefront: ts(\"some.prefix.foo.count\")")
+  fmt.Println("Search wavefront: ts(\"direct.prefix.foo.count\")")
 
   fmt.Println("Entering loop to simulate metrics flushing. Hit ctrl+c to cancel")
 }
