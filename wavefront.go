@@ -1,19 +1,21 @@
-// temp
-
 // Package wavefront is a plugin for go-metrics that provides a Wavefront reporter and tag support at the host and metric level.
 package wavefront
 
 import (
-	"bufio"
-	"fmt"
+	"errors"
 	"log"
 	"net"
+	"net/url"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/rcrowley/go-metrics"
+)
+
+var (
+	configError = errors.New("error: invalid wavefront configuration")
+	directError = errors.New("error: invalid server or token")
 )
 
 // RegisterMetric tag support for metrics.Register()
@@ -82,18 +84,21 @@ func hostTagString(hostTags map[string]string) string {
 // WavefrontConfig provides configuration parameters for
 // the Wavefront exporter
 type WavefrontConfig struct {
-	Addr          *net.TCPAddr     // Network address to connect to
-	Registry      metrics.Registry // Registry to be exported
-	FlushInterval time.Duration    // Flush interval
-	DurationUnit  time.Duration    // Time conversion unit for durations
-	Prefix        string           // Prefix to be prepended to metric names
-	Percentiles   []float64        // Percentiles to export from timers and histograms
-	HostTags      map[string]string
+	Addr           *net.TCPAddr     // Network address to connect to
+	DirectReporter Reporter         // DirectReporter for direct connect (Proxy Addr takes precedence if provided)
+	Registry       metrics.Registry // Registry to be exported
+	FlushInterval  time.Duration    // Flush interval
+	DurationUnit   time.Duration    // Time conversion unit for durations
+	Prefix         string           // Prefix to be prepended to metric names
+	Percentiles    []float64        // Percentiles to export from timers and histograms
+	HostTags       map[string]string
 }
 
-// Wavefront is an exporter function which reports metrics to a
-// wavefront proxy located at addr, flushing them every d duration.
-func Wavefront(r metrics.Registry, d time.Duration, ht map[string]string, prefix string, addr *net.TCPAddr) {
+// An exporter function which reports metrics to a wavefront proxy located at addr, flushing them every d duration.
+func WavefrontProxy(r metrics.Registry, d time.Duration, ht map[string]string, prefix string, addr *net.TCPAddr) error {
+	if addr == nil {
+		return configError
+	}
 	WavefrontWithConfig(WavefrontConfig{
 		Addr:          addr,
 		Registry:      r,
@@ -103,9 +108,39 @@ func Wavefront(r metrics.Registry, d time.Duration, ht map[string]string, prefix
 		HostTags:      ht,
 		Percentiles:   []float64{0.5, 0.75, 0.95, 0.99, 0.999},
 	})
+	return nil
 }
 
-// WavefrontWithConfig calls Wavefront() but allows you to pass a WavefrontConfig struct
+// An exporter function which reports metrics directly to a wavefront server every d duration.
+func WavefrontDirect(r metrics.Registry, d time.Duration, ht map[string]string, prefix, server, token string) error {
+	if server == "" || token == "" {
+		return directError
+	}
+	if _, err := url.ParseRequestURI(server); nil != err {
+		return err
+	}
+
+	WavefrontWithConfig(WavefrontConfig{
+		DirectReporter: NewDirectReporter(server, token),
+		Registry:       r,
+		FlushInterval:  d,
+		DurationUnit:   time.Nanosecond,
+		Prefix:         prefix,
+		HostTags:       ht,
+		Percentiles:    []float64{0.5, 0.75, 0.95, 0.99, 0.999},
+	})
+	return nil
+}
+
+// Deprecated: Use WavefrontProxy() instead.
+// Maintained for backwards compatibility, will be removed in the future.
+func Wavefront(r metrics.Registry, d time.Duration, ht map[string]string, prefix string, addr *net.TCPAddr) {
+	if err := WavefrontProxy(r, d, ht, prefix, addr); nil != err {
+		log.Println(err)
+	}
+}
+
+// Similar to WavefrontProxy() or WavefrontDirect() but allows caller to pass in a WavefrontConfig struct
 func WavefrontWithConfig(c WavefrontConfig) {
 	for _ = range time.Tick(c.FlushInterval) {
 		if err := writeEntireRegistryAndFlush(&c); nil != err {
@@ -124,107 +159,25 @@ func WavefrontOnce(c WavefrontConfig) error {
 // WavefrontSingleMetric submits a single metric to Wavefront. The given metric
 // is not registered in the underyling `go-metrics` registry and the registry
 // will not be flushed entirely (unlike `WavefrontOnce`). If the connection to
-// the Wavefront proxy cannot be made, a non-nil error is returned.
+// the proxy or a Wavefront server cannot be made, a non-nil error is returned.
 func WavefrontSingleMetric(c *WavefrontConfig, name string, metric interface{}, tags map[string]string) error {
-	now := time.Now().Unix()
-	conn, err := net.DialTCP("tcp", nil, c.Addr)
-	if nil != err {
-		return err
+	// Proxy takes precedence if both proxy and direct are provided
+	if c.Addr != nil {
+		return writeSingleMetricToProxy(c, name, metric, tags)
 	}
-	defer conn.Close()
-	w := bufio.NewWriter(conn)
-
-	key := EncodeKey(name, tags)
-	WriteMetricAndFlush(w, metric, key, now, c)
-	return nil
+	if c.DirectReporter != nil {
+		return writeSingleMetricToDirect(c, name, metric, tags)
+	}
+	return configError
 }
 
 func writeEntireRegistryAndFlush(c *WavefrontConfig) error {
-	now := time.Now().Unix()
-	conn, err := net.DialTCP("tcp", nil, c.Addr)
-	if nil != err {
-		return err
+	// Proxy takes precedence if both proxy and direct are provided
+	if c.Addr != nil {
+		return writeRegistryAndFlushToProxy(c)
 	}
-	defer conn.Close()
-	w := bufio.NewWriter(conn)
-
-	c.Registry.Each(func(key string, metric interface{}) {
-		WriteMetricAndFlush(w, metric, key, now, c)
-	})
-	return nil
-}
-
-func WriteMetricAndFlush(w *bufio.Writer, i interface{}, key string, ts int64, c *WavefrontConfig) {
-	name, tagStr := DecodeKey(key)
-	tagStr += hostTagString(c.HostTags)
-
-	switch metric := i.(type) {
-	case metrics.Counter:
-		writeCounter(w, metric, name, tagStr, ts, c)
-	case metrics.Gauge:
-		writeGauge(w, metric, name, tagStr, ts, c)
-	case metrics.GaugeFloat64:
-		writeGaugeFloat64(w, metric, name, tagStr, ts, c)
-	case metrics.Histogram:
-		writeHistogram(w, metric, name, tagStr, ts, c)
-	case metrics.Meter:
-		writeMeter(w, metric, name, tagStr, ts, c)
-	case metrics.Timer:
-		writeTimer(w, metric, name, tagStr, ts, c)
+	if c.DirectReporter != nil {
+		return writeRegistryAndFlushToDirect(c)
 	}
-	w.Flush()
-}
-
-func writeCounter(w *bufio.Writer, metric metrics.Counter, name, tagStr string, ts int64, c *WavefrontConfig) {
-	fmt.Fprintf(w, "%s.%s.count %d %d %s\n", c.Prefix, name, metric.Count(), ts, tagStr)
-}
-
-func writeGauge(w *bufio.Writer, metric metrics.Gauge, name, tagStr string, ts int64, c *WavefrontConfig) {
-	fmt.Fprintf(w, "%s.%s.value %d %d %s\n", c.Prefix, name, metric.Value(), ts, tagStr)
-}
-
-func writeGaugeFloat64(w *bufio.Writer, metric metrics.GaugeFloat64, name, tagStr string, ts int64, c *WavefrontConfig) {
-	fmt.Fprintf(w, "%s.%s.value %f %d %s\n", c.Prefix, name, metric.Value(), ts, tagStr)
-}
-
-func writeHistogram(w *bufio.Writer, metric metrics.Histogram, name, tagStr string, ts int64, c *WavefrontConfig) {
-	h := metric.Snapshot()
-	ps := h.Percentiles(c.Percentiles)
-	fmt.Fprintf(w, "%s.%s.count %d %d %s\n", c.Prefix, name, h.Count(), ts, tagStr)
-	fmt.Fprintf(w, "%s.%s.min %d %d %s\n", c.Prefix, name, h.Min(), ts, tagStr)
-	fmt.Fprintf(w, "%s.%s.max %d %d %s\n", c.Prefix, name, h.Max(), ts, tagStr)
-	fmt.Fprintf(w, "%s.%s.mean %.2f %d %s\n", c.Prefix, name, h.Mean(), ts, tagStr)
-	fmt.Fprintf(w, "%s.%s.std-dev %.2f %d %s\n", c.Prefix, name, h.StdDev(), ts, tagStr)
-	for psIdx, psKey := range c.Percentiles {
-		key := strings.Replace(strconv.FormatFloat(psKey*100.0, 'f', -1, 64), ".", "", 1)
-		fmt.Fprintf(w, "%s.%s.%s-percentile %.2f %d %s\n", c.Prefix, name, key, ps[psIdx], ts, tagStr)
-	}
-}
-
-func writeMeter(w *bufio.Writer, metric metrics.Meter, name, tagStr string, ts int64, c *WavefrontConfig) {
-	m := metric.Snapshot()
-	fmt.Fprintf(w, "%s.%s.count %d %d %s\n", c.Prefix, name, m.Count(), ts, tagStr)
-	fmt.Fprintf(w, "%s.%s.one-minute %.2f %d %s\n", c.Prefix, name, m.Rate1(), ts, tagStr)
-	fmt.Fprintf(w, "%s.%s.five-minute %.2f %d %s\n", c.Prefix, name, m.Rate5(), ts, tagStr)
-	fmt.Fprintf(w, "%s.%s.fifteen-minute %.2f %d %s\n", c.Prefix, name, m.Rate15(), ts, tagStr)
-	fmt.Fprintf(w, "%s.%s.mean %.2f %d %s\n", c.Prefix, name, m.RateMean(), ts, tagStr)
-}
-
-func writeTimer(w *bufio.Writer, metric metrics.Timer, name, tagStr string, ts int64, c *WavefrontConfig) {
-	t := metric.Snapshot()
-	du := float64(c.DurationUnit)
-	ps := t.Percentiles(c.Percentiles)
-	fmt.Fprintf(w, "%s.%s.count %d %d %s\n", c.Prefix, name, t.Count(), ts, tagStr)
-	fmt.Fprintf(w, "%s.%s.min %d %d %s\n", c.Prefix, name, t.Min()/int64(du), ts, tagStr)
-	fmt.Fprintf(w, "%s.%s.max %d %d %s\n", c.Prefix, name, t.Max()/int64(du), ts, tagStr)
-	fmt.Fprintf(w, "%s.%s.mean %.2f %d %s\n", c.Prefix, name, t.Mean()/du, ts, tagStr)
-	fmt.Fprintf(w, "%s.%s.std-dev %.2f %d %s\n", c.Prefix, name, t.StdDev()/du, ts, tagStr)
-	for psIdx, psKey := range c.Percentiles {
-		key := strings.Replace(strconv.FormatFloat(psKey*100.0, 'f', -1, 64), ".", "", 1)
-		fmt.Fprintf(w, "%s.%s.%s-percentile %.2f %d %s\n", c.Prefix, name, key, ps[psIdx]/du, ts, tagStr)
-	}
-	fmt.Fprintf(w, "%s.%s.one-minute %.2f %d %s\n", c.Prefix, name, t.Rate1(), ts, tagStr)
-	fmt.Fprintf(w, "%s.%s.five-minute %.2f %d %s\n", c.Prefix, name, t.Rate5(), ts, tagStr)
-	fmt.Fprintf(w, "%s.%s.fifteen-minute %.2f %d %s\n", c.Prefix, name, t.Rate15(), ts, tagStr)
-	fmt.Fprintf(w, "%s.%s.mean-rate %.2f %d %s\n", c.Prefix, name, t.RateMean(), ts, tagStr)
+	return configError
 }
