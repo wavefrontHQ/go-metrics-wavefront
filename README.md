@@ -18,7 +18,11 @@ func main() {
   hostTags := map[string]string{
     "source": "go-metrics-test",
   }
-  go wavefront.Wavefront(metrics.DefaultRegistry, 1*time.Second, hostTags, "some.prefix", addr)
+  // report to a Wavefront proxy
+  go wavefront.WavefrontProxy(metrics.DefaultRegistry, 1*time.Second, hostTags, "some.prefix", addr)
+
+  // report to a Wavefront server
+  go wavefront.WavefrontDirect(metrics.DefaultRegistry, 5*time.Second, hostTags, "direct.prefix", server, token)
 }
 ```
 
