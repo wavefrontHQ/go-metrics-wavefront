@@ -74,7 +74,6 @@ func TestDeltaPoint(t *testing.T) {
 	}
 }
 
-
 func TestGaugePoint(t *testing.T) {
 	gauge := metrics.NewGauge()
 	gauge.Update(10)
@@ -84,7 +83,6 @@ func TestGaugePoint(t *testing.T) {
 		t.Error("gauges don't match", expected, point)
 	}
 }
-
 
 func TestGaugePointWithNoPrefix(t *testing.T) {
 	gauge := metrics.NewGauge()
