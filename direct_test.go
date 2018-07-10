@@ -17,7 +17,15 @@ var (
 
 func testConfig() *WavefrontConfig {
 	return &WavefrontConfig{
-		Prefix:       "test.prefix",
+		Prefix:       "test.prefix.",
+		Percentiles:  []float64{0.5, 0.75, 0.95, 0.99, 0.999},
+		DurationUnit: 5 * time.Second,
+	}
+}
+
+func testConfigWithNoPrefix() *WavefrontConfig {
+	return &WavefrontConfig{
+		Prefix:       "",
 		Percentiles:  []float64{0.5, 0.75, 0.95, 0.99, 0.999},
 		DurationUnit: 5 * time.Second,
 	}
@@ -45,6 +53,16 @@ func TestCounterPoint(t *testing.T) {
 	}
 }
 
+func TestCounterPointWithNoPrefix(t *testing.T) {
+	counter := metrics.NewCounter()
+	counter.Inc(10)
+	point := counterPoint(counter, "foo", tagStr, testConfigWithNoPrefix())
+	expected := "foo.count 10 key1=\"val1\" key2=\"val2\""
+	if strings.TrimRight(point, "\n") != expected {
+		t.Error("counters don't match", expected, point)
+	}
+}
+
 func TestDeltaPoint(t *testing.T) {
 	counter := metrics.NewCounter()
 	counter.Inc(10)
@@ -56,6 +74,7 @@ func TestDeltaPoint(t *testing.T) {
 	}
 }
 
+
 func TestGaugePoint(t *testing.T) {
 	gauge := metrics.NewGauge()
 	gauge.Update(10)
@@ -66,11 +85,32 @@ func TestGaugePoint(t *testing.T) {
 	}
 }
 
+
+func TestGaugePointWithNoPrefix(t *testing.T) {
+	gauge := metrics.NewGauge()
+	gauge.Update(10)
+	point := gaugePoint(gauge, "foo", tagStr, testConfigWithNoPrefix())
+	expected := "foo.value 10 key1=\"val1\" key2=\"val2\""
+	if strings.TrimRight(point, "\n") != expected {
+		t.Error("gauges don't match", expected, point)
+	}
+}
+
 func TestGaugeFloat64Point(t *testing.T) {
 	gauge := metrics.NewGaugeFloat64()
 	gauge.Update(10)
 	point := gaugeFloat64Point(gauge, "foo", tagStr, testConfig())
 	expected := "test.prefix.foo.value 10.000000 key1=\"val1\" key2=\"val2\""
+	if strings.TrimRight(point, "\n") != expected {
+		t.Error("gaugeFloat64's don't match", expected, point)
+	}
+}
+
+func TestGaugeFloat64PointWithNoPrefix(t *testing.T) {
+	gauge := metrics.NewGaugeFloat64()
+	gauge.Update(10)
+	point := gaugeFloat64Point(gauge, "foo", tagStr, testConfigWithNoPrefix())
+	expected := "foo.value 10.000000 key1=\"val1\" key2=\"val2\""
 	if strings.TrimRight(point, "\n") != expected {
 		t.Error("gaugeFloat64's don't match", expected, point)
 	}
