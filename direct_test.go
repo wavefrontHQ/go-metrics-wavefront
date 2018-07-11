@@ -72,6 +72,25 @@ func TestDeltaPoint(t *testing.T) {
 	if !strings.HasPrefix(point, "∆") {
 		t.Error("invalid delta prefix", point)
 	}
+	expected := "∆test.prefix.foo.count 10 key1=\"val1\" key2=\"val2\""
+	if strings.TrimRight(point, "\n") != expected {
+		t.Error("counters don't match", expected, point)
+	}
+}
+
+func TestDeltaPointWithNoPrefix(t *testing.T) {
+	counter := metrics.NewCounter()
+	counter.Inc(10)
+	name := DeltaCounterName("foo")
+	point := deltaPoint(counter, name, tagStr, 0, testConfigWithNoPrefix())
+
+	if !strings.HasPrefix(point, "∆") {
+		t.Error("invalid delta prefix", point)
+	}
+	expected := "∆foo.count 10 key1=\"val1\" key2=\"val2\""
+	if strings.TrimRight(point, "\n") != expected {
+		t.Error("delta counters don't match", expected, point)
+	}
 }
 
 func TestGaugePoint(t *testing.T) {
