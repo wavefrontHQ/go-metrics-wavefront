@@ -18,6 +18,10 @@ const (
 func writeSingleMetricToDirect(c *WavefrontConfig, name string, metric interface{}, tags map[string]string) error {
 	var points []string
 	key := EncodeKey(name, tags)
+
+	if c.Prefix != "" {
+		c.Prefix = strings.Join([]string{c.Prefix, "."}, "")
+	}
 	points = appendMetric(metric, key, c, points)
 	return reportPoints(c.DirectReporter, points)
 }
@@ -26,6 +30,9 @@ func writeRegistryAndFlushToDirect(c *WavefrontConfig) error {
 	var points []string
 	var retErr error // the last encountered error
 
+	if c.Prefix != "" {
+		c.Prefix = strings.Join([]string{c.Prefix, "."}, "")
+	}
 	c.Registry.Each(func(key string, metric interface{}) {
 		points = appendMetric(metric, key, c, points)
 		if len(points) >= batchSize {
@@ -84,15 +91,15 @@ func counterPoint(metric metrics.Counter, name, tagStr string, c *WavefrontConfi
 	if hasDeltaPrefix(name) {
 		return deltaPoint(metric, name, tagStr, 0, c)
 	}
-	return fmt.Sprintf("%s.%s.count %d %s", c.Prefix, name, metric.Count(), tagStr)
+	return fmt.Sprintf("%s%s.count %d %s", c.Prefix, name, metric.Count(), tagStr)
 }
 
 func gaugePoint(metric metrics.Gauge, name, tagStr string, c *WavefrontConfig) string {
-	return fmt.Sprintf("%s.%s.value %d %s", c.Prefix, name, metric.Value(), tagStr)
+	return fmt.Sprintf("%s%s.value %d %s", c.Prefix, name, metric.Value(), tagStr)
 }
 
 func gaugeFloat64Point(metric metrics.GaugeFloat64, name, tagStr string, c *WavefrontConfig) string {
-	return fmt.Sprintf("%s.%s.value %f %s", c.Prefix, name, metric.Value(), tagStr)
+	return fmt.Sprintf("%s%s.value %f %s", c.Prefix, name, metric.Value(), tagStr)
 }
 
 func histoPoints(metric metrics.Histogram, name, tagStr string, c *WavefrontConfig) []string {
@@ -100,14 +107,14 @@ func histoPoints(metric metrics.Histogram, name, tagStr string, c *WavefrontConf
 	h := metric.Snapshot()
 	ps := h.Percentiles(c.Percentiles)
 	i := 0
-	points[i], i = fmt.Sprintf("%s.%s.count %d %s", c.Prefix, name, h.Count(), tagStr), i+1
-	points[i], i = fmt.Sprintf("%s.%s.min %d %s", c.Prefix, name, h.Min(), tagStr), i+1
-	points[i], i = fmt.Sprintf("%s.%s.max %d %s", c.Prefix, name, h.Max(), tagStr), i+1
-	points[i], i = fmt.Sprintf("%s.%s.mean %.2f %s", c.Prefix, name, h.Mean(), tagStr), i+1
-	points[i], i = fmt.Sprintf("%s.%s.std-dev %.2f %s", c.Prefix, name, h.StdDev(), tagStr), i+1
+	points[i], i = fmt.Sprintf("%s%s.count %d %s", c.Prefix, name, h.Count(), tagStr), i+1
+	points[i], i = fmt.Sprintf("%s%s.min %d %s", c.Prefix, name, h.Min(), tagStr), i+1
+	points[i], i = fmt.Sprintf("%s%s.max %d %s", c.Prefix, name, h.Max(), tagStr), i+1
+	points[i], i = fmt.Sprintf("%s%s.mean %.2f %s", c.Prefix, name, h.Mean(), tagStr), i+1
+	points[i], i = fmt.Sprintf("%s%s.std-dev %.2f %s", c.Prefix, name, h.StdDev(), tagStr), i+1
 	for psIdx, psKey := range c.Percentiles {
 		key := strings.Replace(strconv.FormatFloat(psKey*100.0, 'f', -1, 64), ".", "", 1)
-		points[i], i = fmt.Sprintf("%s.%s.%s-percentile %.2f %s", c.Prefix, name, key, ps[psIdx], tagStr), i+1
+		points[i], i = fmt.Sprintf("%s%s.%s-percentile %.2f %s", c.Prefix, name, key, ps[psIdx], tagStr), i+1
 	}
 	return points
 }
@@ -115,11 +122,11 @@ func histoPoints(metric metrics.Histogram, name, tagStr string, c *WavefrontConf
 func meterPoints(metric metrics.Meter, name, tagStr string, c *WavefrontConfig) []string {
 	points := make([]string, 5)
 	m := metric.Snapshot()
-	points[0] = fmt.Sprintf("%s.%s.count %d %s", c.Prefix, name, m.Count(), tagStr)
-	points[1] = fmt.Sprintf("%s.%s.one-minute %.2f %s", c.Prefix, name, m.Rate1(), tagStr)
-	points[2] = fmt.Sprintf("%s.%s.five-minute %.2f %s", c.Prefix, name, m.Rate5(), tagStr)
-	points[3] = fmt.Sprintf("%s.%s.fifteen-minute %.2f %s", c.Prefix, name, m.Rate15(), tagStr)
-	points[4] = fmt.Sprintf("%s.%s.mean %.2f %s", c.Prefix, name, m.RateMean(), tagStr)
+	points[0] = fmt.Sprintf("%s%s.count %d %s", c.Prefix, name, m.Count(), tagStr)
+	points[1] = fmt.Sprintf("%s%s.one-minute %.2f %s", c.Prefix, name, m.Rate1(), tagStr)
+	points[2] = fmt.Sprintf("%s%s.five-minute %.2f %s", c.Prefix, name, m.Rate5(), tagStr)
+	points[3] = fmt.Sprintf("%s%s.fifteen-minute %.2f %s", c.Prefix, name, m.Rate15(), tagStr)
+	points[4] = fmt.Sprintf("%s%s.mean %.2f %s", c.Prefix, name, m.RateMean(), tagStr)
 	return points
 }
 
@@ -129,18 +136,18 @@ func timerPoints(metric metrics.Timer, name, tagStr string, c *WavefrontConfig) 
 	du := float64(c.DurationUnit)
 	ps := t.Percentiles(c.Percentiles)
 	i := 0
-	points[i], i = fmt.Sprintf("%s.%s.count %d %s", c.Prefix, name, t.Count(), tagStr), i+1
-	points[i], i = fmt.Sprintf("%s.%s.min %d %s", c.Prefix, name, t.Min()/int64(du), tagStr), i+1
-	points[i], i = fmt.Sprintf("%s.%s.max %d %s", c.Prefix, name, t.Max()/int64(du), tagStr), i+1
-	points[i], i = fmt.Sprintf("%s.%s.mean %.2f %s", c.Prefix, name, t.Mean()/du, tagStr), i+1
-	points[i], i = fmt.Sprintf("%s.%s.std-dev %.2f %s", c.Prefix, name, t.StdDev()/du, tagStr), i+1
+	points[i], i = fmt.Sprintf("%s%s.count %d %s", c.Prefix, name, t.Count(), tagStr), i+1
+	points[i], i = fmt.Sprintf("%s%s.min %d %s", c.Prefix, name, t.Min()/int64(du), tagStr), i+1
+	points[i], i = fmt.Sprintf("%s%s.max %d %s", c.Prefix, name, t.Max()/int64(du), tagStr), i+1
+	points[i], i = fmt.Sprintf("%s%s.mean %.2f %s", c.Prefix, name, t.Mean()/du, tagStr), i+1
+	points[i], i = fmt.Sprintf("%s%s.std-dev %.2f %s", c.Prefix, name, t.StdDev()/du, tagStr), i+1
 	for psIdx, psKey := range c.Percentiles {
 		key := strings.Replace(strconv.FormatFloat(psKey*100.0, 'f', -1, 64), ".", "", 1)
-		points[i], i = fmt.Sprintf("%s.%s.%s-percentile %.2f %s", c.Prefix, name, key, ps[psIdx]/du, tagStr), i+1
+		points[i], i = fmt.Sprintf("%s%s.%s-percentile %.2f %s", c.Prefix, name, key, ps[psIdx]/du, tagStr), i+1
 	}
-	points[i], i = fmt.Sprintf("%s.%s.one-minute %.2f %s", c.Prefix, name, t.Rate1(), tagStr), i+1
-	points[i], i = fmt.Sprintf("%s.%s.five-minute %.2f %s", c.Prefix, name, t.Rate5(), tagStr), i+1
-	points[i], i = fmt.Sprintf("%s.%s.fifteen-minute %.2f %s", c.Prefix, name, t.Rate15(), tagStr), i+1
-	points[i], i = fmt.Sprintf("%s.%s.mean-rate %.2f %s", c.Prefix, name, t.RateMean(), tagStr), i+1
+	points[i], i = fmt.Sprintf("%s%s.one-minute %.2f %s", c.Prefix, name, t.Rate1(), tagStr), i+1
+	points[i], i = fmt.Sprintf("%s%s.five-minute %.2f %s", c.Prefix, name, t.Rate5(), tagStr), i+1
+	points[i], i = fmt.Sprintf("%s%s.fifteen-minute %.2f %s", c.Prefix, name, t.Rate15(), tagStr), i+1
+	points[i], i = fmt.Sprintf("%s%s.mean-rate %.2f %s", c.Prefix, name, t.RateMean(), tagStr), i+1
 	return points
 }

@@ -41,7 +41,7 @@ func deltaPoint(metric metrics.Counter, name, tagStr string, ts int64, c *Wavefr
 
 	// add ∆ to prefix and remove from metric name
 	if ts == 0 {
-		return fmt.Sprintf("%s.%s.count %d %s\n", deltaPrefix+c.Prefix, prunedName, value, tagStr)
+		return fmt.Sprintf("%s%s.count %d %s\n", deltaPrefix+c.Prefix, prunedName, value, tagStr)
 	}
-	return fmt.Sprintf("%s.%s.count %d %d %s\n", deltaPrefix+c.Prefix, prunedName, value, ts, tagStr)
+	return fmt.Sprintf("%s%s.count %d %d %s\n", deltaPrefix+c.Prefix, prunedName, value, ts, tagStr)
 }
