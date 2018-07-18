@@ -1,4 +1,4 @@
-# go-metrics-wavefront [![travis build status](https://travis-ci.com/wavefrontHQ/go-metrics-wavefront.svg?branch=master)](https://travis-ci.com/wavefrontHQ/go-metrics-wavefront)
+# go-metrics-wavefront [![GoDoc](https://godoc.org/github.com/wavefrontHQ/go-metrics-wavefront?status.svg)](https://godoc.org/github.com/wavefrontHQ/go-metrics-wavefront) [![travis build status](https://travis-ci.com/wavefrontHQ/go-metrics-wavefront.svg?branch=master)](https://travis-ci.com/wavefrontHQ/go-metrics-wavefront)
 
 This is a plugin for [go-metrics](https://github.com/rcrowley/go-metrics) which adds a Wavefront reporter and a simple abstraction that supports tagging at the host and metric level.
 
