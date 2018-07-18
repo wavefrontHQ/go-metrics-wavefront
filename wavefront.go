@@ -89,7 +89,7 @@ type WavefrontConfig struct {
 	Registry       metrics.Registry // Registry to be exported
 	FlushInterval  time.Duration    // Flush interval
 	DurationUnit   time.Duration    // Time conversion unit for durations
-	Prefix         string           // Prefix to be prepended to metric names
+	Prefix         string           // Prefix to be prepended to metric names. Note that a period is automatically appended to the prefix (if non-empty).
 	Percentiles    []float64        // Percentiles to export from timers and histograms
 	HostTags       map[string]string
 }
