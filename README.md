@@ -120,5 +120,7 @@ func main() {
   fmt.Println("Search wavefront: ts(\"direct.prefix.foo.count\")")
 
   fmt.Println("Entering loop to simulate metrics flushing. Hit ctrl+c to cancel")
+  
+  select{}
 }
 ```
