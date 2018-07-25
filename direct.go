@@ -19,7 +19,7 @@ func writeSingleMetricToDirect(c *WavefrontConfig, name string, metric interface
 	var points []string
 	key := EncodeKey(name, tags)
 
-	if c.Prefix != "" {
+	if !strings.HasSuffix(c.Prefix, ".") {
 		c.Prefix = strings.Join([]string{c.Prefix, "."}, "")
 	}
 	points = appendMetric(metric, key, c, points)
@@ -30,7 +30,7 @@ func writeRegistryAndFlushToDirect(c *WavefrontConfig) error {
 	var points []string
 	var retErr error // the last encountered error
 
-	if c.Prefix != "" {
+	if !strings.HasSuffix(c.Prefix, ".") {
 		c.Prefix = strings.Join([]string{c.Prefix, "."}, "")
 	}
 	c.Registry.Each(func(key string, metric interface{}) {

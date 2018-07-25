@@ -18,7 +18,7 @@ func writeRegistryAndFlushToProxy(c *WavefrontConfig) error {
 	}
 	defer conn.Close()
 	w := bufio.NewWriter(conn)
-	if c.Prefix != "" {
+	if !strings.HasSuffix(c.Prefix, ".") {
 		c.Prefix = strings.Join([]string{c.Prefix, "."}, "")
 	}
 	c.Registry.Each(func(key string, metric interface{}) {
@@ -38,7 +38,7 @@ func writeSingleMetricToProxy(c *WavefrontConfig, name string, metric interface{
 	w := bufio.NewWriter(conn)
 
 	key := EncodeKey(name, tags)
-	if c.Prefix != "" {
+	if !strings.HasSuffix(c.Prefix, ".") {
 		c.Prefix = strings.Join([]string{c.Prefix, "."}, "")
 	}
 	WriteMetricAndFlush(w, metric, key, now, c)
