@@ -3,7 +3,7 @@
   name = "github.com/rcrowley/go-metrics"
 
 [[constraint]]
-  branch = "master"
+  branch = "laullon/histo_update"
   name = "github.com/wavefronthq/wavefront-sdk-go"
 
 [prune]
