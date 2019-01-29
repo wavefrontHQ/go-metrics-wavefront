@@ -31,8 +31,45 @@ func TestPrefixAndSuffix(t *testing.T) {
 	assert.Equal(t, name, "name")
 }
 
+func TestBasicCounter(t *testing.T) {
+	metrics.DefaultRegistry.UnregisterAll()
+
+	sender := &MockSender{}
+	reporter := New(sender, application.New("app", "srv"))
+	tags := map[string]string{"tag1": "tag"}
+
+	name := "counter"
+	c := GetMetric(name, tags)
+	if c == nil {
+		c = metrics.NewCounter()
+		RegisterMetric(name, c, tags)
+	}
+	c.(metrics.Counter).Inc(1)
+
+	reporter.Report()
+
+	assert.Equal(t, 1, len(sender.Metrics))
+}
+
+func TestWFHistogramAPI(t *testing.T) {
+	h := histogram.New()
+
+	switch h.(type) {
+	case metrics.Histogram:
+		t.Log("-- metrics.Histogram --")
+	default:
+		t.Fatalf("the histogram is not 'metrics.Histogram'")
+	}
+
+	switch h.(type) {
+	case histogram.Histogram:
+		t.Log("-- histogram.Histogram --")
+	default:
+		t.Fatalf("the histogram is not 'histogram.Histogram'")
+	}
+}
+
 func TestWFHistogram(t *testing.T) {
-	DefaultWavefrontRegistry.UnregisterAll()
 	metrics.DefaultRegistry.UnregisterAll()
 
 	sender := &MockSender{}
@@ -43,22 +80,21 @@ func TestWFHistogram(t *testing.T) {
 	RegisterMetric("wf.histogram", h, tags)
 
 	for i := 0; i < 1000; i++ {
-		h.Update(rand.Float64())
+		h.Update(rand.Int63())
 	}
 
 	time.Sleep(time.Second * 2) // wait until the histogram rotates
 
-	reporter.Stop()
+	reporter.Report()
 
 	fmt.Printf("-> dis: %v\n", sender.Distributions)
 	fmt.Printf("-> met: %v\n", sender.Metrics)
 
 	assert.Equal(t, 1, len(sender.Distributions))
-	assert.Equal(t, 10, len(sender.Metrics))
+	assert.Equal(t, 0, len(sender.Metrics))
 }
 
 func TestHistogram(t *testing.T) {
-	DefaultWavefrontRegistry.UnregisterAll()
 	metrics.DefaultRegistry.UnregisterAll()
 
 	sender := &MockSender{}
@@ -73,7 +109,7 @@ func TestHistogram(t *testing.T) {
 		h.Update(rand.Int63())
 	}
 
-	reporter.Stop()
+	reporter.Report()
 
 	fmt.Printf("-> dis: %v\n", sender.Distributions)
 	fmt.Printf("-> met: %v\n", sender.Metrics)
@@ -83,7 +119,6 @@ func TestHistogram(t *testing.T) {
 }
 
 func TestDeltaPoint(t *testing.T) {
-	DefaultWavefrontRegistry.UnregisterAll()
 	metrics.DefaultRegistry.UnregisterAll()
 
 	sender := &MockSender{}
@@ -94,12 +129,12 @@ func TestDeltaPoint(t *testing.T) {
 	RegisterMetric(DeltaCounterName("foo"), counter, tags)
 
 	counter.Inc(10)
-	reporter.Stop()
+	reporter.Report()
 	fmt.Printf("-> Deltas: %v\n", sender.Deltas)
 	assert.Equal(t, 1, len(sender.Deltas))
 
 	counter.Inc(10)
-	reporter.Stop()
+	reporter.Report()
 
 	fmt.Printf("-> Deltas: %v\n", sender.Deltas)
 	fmt.Printf("-> Metrics: %v\n", sender.Metrics)

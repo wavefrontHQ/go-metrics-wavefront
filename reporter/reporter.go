@@ -1,6 +1,7 @@
 package reporter
 
 import (
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ import (
 type WavefrontMetricsReporter interface {
 	Start()
 	Stop()
+	Report()
 }
 
 type reporter struct {
@@ -25,7 +27,6 @@ type reporter struct {
 	addSuffix    bool
 	interval     time.Duration
 	ticker       *time.Ticker
-	registry     *WavefrontRegistry
 	percentiles  []float64              // Percentiles to export from timers and histograms
 	durationUnit time.Duration          // Time conversion unit for durations
 	metrics      map[string]interface{} // for Wavefron specific metrics tyoes, like Histograms
@@ -45,13 +46,6 @@ func Source(source string) Option {
 func ReportingInterval(interval time.Duration) Option {
 	return func(args *reporter) {
 		args.interval = interval
-	}
-}
-
-// Registry set the metric registry to report
-func Registry(registry *WavefrontRegistry) Option {
-	return func(args *reporter) {
-		args.registry = registry
 	}
 }
 
@@ -76,7 +70,6 @@ func New(sender wf.Sender, application application.Tags, setters ...Option) Wave
 		application:  application,
 		source:       "mySource",
 		interval:     time.Second * 5,
-		registry:     DefaultWavefrontRegistry,
 		percentiles:  []float64{0.5, 0.75, 0.95, 0.99, 0.999},
 		durationUnit: time.Nanosecond,
 		metrics:      make(map[string]interface{}),
@@ -87,36 +80,40 @@ func New(sender wf.Sender, application application.Tags, setters ...Option) Wave
 		setter(r)
 	}
 
+	// r.Start()
+
 	return r
 }
 
 // RegisterMetric tag support for metrics.Register()
 func RegisterMetric(key string, metric interface{}, tags map[string]string) {
 	key = EncodeKey(key, tags)
-	DefaultWavefrontRegistry.Register(key, metric)
+	metrics.Register(key, metric)
 }
 
 // GetMetric tag support for metrics.Get()
 func GetMetric(key string, tags map[string]string) interface{} {
 	key = EncodeKey(key, tags)
-	return DefaultWavefrontRegistry.Get(key)
+	return metrics.Get(key)
 }
 
 // GetOrRegisterMetric tag support for metrics.GetOrRegister()
 func GetOrRegisterMetric(name string, i interface{}, tags map[string]string) interface{} {
 	key := EncodeKey(name, tags)
-	return DefaultWavefrontRegistry.GetOrRegister(key, i)
+	return metrics.GetOrRegister(key, i)
 }
 
 // UnregisterMetric tag support for metrics.UnregisterMetric()
 func UnregisterMetric(name string, tags map[string]string) {
 	key := EncodeKey(name, tags)
-	DefaultWavefrontRegistry.Unregister(key)
+	metrics.Unregister(key)
 }
 
-func (r *reporter) report() {
-	r.registry.Each(func(key string, metric interface{}) {
+func (r *reporter) Report() {
+	log.Printf("reporting....\n")
+	metrics.DefaultRegistry.Each(func(key string, metric interface{}) {
 		name, tags := DecodeKey(key)
+		log.Printf("reporting metric: %s\n", r.prepareName(name))
 		switch metric.(type) {
 		case metrics.Counter:
 			if hasDeltaPrefix(name) {
@@ -128,10 +125,10 @@ func (r *reporter) report() {
 			r.sender.SendMetric(r.prepareName(name, "value"), float64(metric.(metrics.Gauge).Value()), 0, r.source, tags)
 		case metrics.GaugeFloat64:
 			r.sender.SendMetric(r.prepareName(name, "value"), float64(metric.(metrics.GaugeFloat64).Value()), 0, r.source, tags)
-		case metrics.Histogram:
-			r.reportHistogram(name, metric.(metrics.Histogram), tags)
 		case histogram.Histogram:
 			r.reportWFHistogram(name, metric.(histogram.Histogram), tags)
+		case metrics.Histogram:
+			r.reportHistogram(name, metric.(metrics.Histogram), tags)
 		case metrics.Meter:
 			r.reportMeter(name, metric.(metrics.Meter), tags)
 		case metrics.Timer:
@@ -222,7 +219,7 @@ func (r *reporter) Start() {
 		r.ticker = time.NewTicker(r.interval)
 		go func() {
 			for range r.ticker.C {
-				r.report()
+				r.Report()
 			}
 		}()
 	}
@@ -233,5 +230,5 @@ func (r *reporter) Stop() {
 		r.ticker.Stop()
 		r.ticker = nil
 	}
-	r.report()
+	r.Report()
 }

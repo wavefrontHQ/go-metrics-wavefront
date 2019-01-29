@@ -42,8 +42,8 @@
   version = "v1.3.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:8d006dd9dd5c5afd5a80d00b1aa31b17d80a79f70d80bfb9f109c8bedc92dd2b"
+  branch = "laullon/histo_update"
+  digest = "1:f7aa691a82103472d6aab2f5003d7d798222ac2553eff6edabc45ecc5fd3db65"
   name = "github.com/wavefronthq/wavefront-sdk-go"
   packages = [
     "application",
@@ -52,7 +52,7 @@
     "senders",
   ]
   pruneopts = "UT"
-  revision = "d49a054d46ad1bccad6107321c74b30e6864d46c"
+  revision = "f7801f69298420c44bb2b3af4c05a67c20920d10"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -61,6 +61,7 @@
     "github.com/rcrowley/go-metrics",
     "github.com/stretchr/testify/assert",
     "github.com/wavefronthq/wavefront-sdk-go/application",
+    "github.com/wavefronthq/wavefront-sdk-go/histogram",
     "github.com/wavefronthq/wavefront-sdk-go/senders",
   ]
   solver-name = "gps-cdcl"

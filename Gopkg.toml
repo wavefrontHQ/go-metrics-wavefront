@@ -2,6 +2,8 @@
   branch = "master"
   name = "github.com/rcrowley/go-metrics"
 
+
+# TODO: change to wavefront-sdk-go version
 [[constraint]]
   branch = "laullon/histo_update"
   name = "github.com/wavefronthq/wavefront-sdk-go"
