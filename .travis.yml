@@ -8,8 +8,12 @@ go:
   - "1.10.x"
   - master 
 
+before_install:
+  # Setup dependency management tool
+  - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+
 install:
-  - # Skip
+  - dep ensure
 
 matrix:
   # It's ok if our code fails on unstable development versions of Go.
