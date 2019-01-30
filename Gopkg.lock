@@ -52,7 +52,7 @@
     "senders",
   ]
   pruneopts = "UT"
-  revision = "bd7a360407344533093ab00d78635547018a412d"
+  revision = "54a41fea5d9dc76d244194f255ec8a7727ca41b8"
 
 [solve-meta]
   analyzer-name = "dep"

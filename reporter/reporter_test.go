@@ -157,7 +157,7 @@ func (s MockSender) SendEvent(name string, startMillis, endMillis int64, source 
 	return nil
 }
 
-func (s MockSender) SendSpan(name string, startMillis, durationMillis int64, source, traceId, spanId string, parents, followsFrom []string, tags []senders.SpanTag, spanLogs []senders.SpanLog) error {
+func (s MockSender) SendSpan(name string, startMillis, durationMillis int64, source, traceID, spanID string, parents, followsFrom []string, tags []senders.SpanTag, spanLogs []senders.SpanLog) error {
 	return nil
 }
 
