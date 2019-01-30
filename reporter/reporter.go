@@ -4,6 +4,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	metrics "github.com/rcrowley/go-metrics"
@@ -21,6 +22,7 @@ type WavefrontMetricsReporter interface {
 }
 
 type reporter struct {
+	mutex        sync.Mutex
 	sender       wf.Sender
 	application  application.Tags
 	source       string
@@ -101,8 +103,10 @@ func New(sender wf.Sender, application application.Tags, setters ...Option) Wave
 	go func() {
 		for error := range r.errors {
 			if error != nil {
+				r.mutex.Lock()
 				r.errorsCount++
 				log.Printf("(%d) reporter error: %v\n", r.errorsCount, error)
+				r.mutex.Unlock()
 			}
 		}
 	}()
@@ -115,6 +119,8 @@ func New(sender wf.Sender, application application.Tags, setters ...Option) Wave
 }
 
 func (r *reporter) ErrorsCount() int64 {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 	return r.errorsCount
 }
 
