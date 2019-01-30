@@ -33,6 +33,8 @@ type reporter struct {
 	metrics      map[string]interface{} // for Wavefron specific metrics tyoes, like Histograms
 	errors       chan error
 	errorsCount  int64
+	stop         chan bool
+	autoStart    bool
 }
 
 // Option allow WavefrontReporter customization
@@ -45,10 +47,17 @@ func Source(source string) Option {
 	}
 }
 
-// ReportingInterval chanfe the default 1 minute reporting interval.
+// ReportingInterval change the default 1 minute reporting interval.
 func ReportingInterval(interval time.Duration) Option {
 	return func(args *reporter) {
 		args.interval = interval
+	}
+}
+
+// DisableAutoStart prevent the Repotorte to start reporting when is cretaed.
+func DisableAutoStart() Option {
+	return func(args *reporter) {
+		args.autoStart = false
 	}
 }
 
@@ -78,13 +87,17 @@ func New(sender wf.Sender, application application.Tags, setters ...Option) Wave
 		metrics:      make(map[string]interface{}),
 		addSuffix:    true,
 		errorsCount:  0,
+		autoStart:    true,
 	}
 
 	for _, setter := range setters {
 		setter(r)
 	}
 
+	r.ticker = time.NewTicker(r.interval)
+	r.stop = make(chan bool, 1)
 	r.errors = make(chan error)
+
 	go func() {
 		for error := range r.errors {
 			if error != nil {
@@ -94,7 +107,9 @@ func New(sender wf.Sender, application application.Tags, setters ...Option) Wave
 		}
 	}()
 
-	// r.Start()
+	if r.autoStart {
+		r.Start()
+	}
 
 	return r
 }
@@ -209,20 +224,19 @@ func (r *reporter) prepareName(name string, suffix ...string) string {
 }
 
 func (r *reporter) Start() {
-	if r.ticker == nil {
-		r.ticker = time.NewTicker(r.interval)
-		go func() {
-			for range r.ticker.C {
+	go func() {
+		for {
+			select {
+			case <-r.ticker.C:
 				r.Report()
+			case <-r.stop:
+				return
 			}
-		}()
-	}
+		}
+	}()
 }
 
 func (r *reporter) Stop() {
-	if r.ticker != nil {
-		r.ticker.Stop()
-		r.ticker = nil
-	}
+	r.stop <- true
 	r.Report()
 }
