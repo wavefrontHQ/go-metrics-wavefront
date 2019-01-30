@@ -62,7 +62,7 @@ func main() {
 
 	for {
 		counter.Inc(rand.Int63())
-		histogram.Update(rand.Int63())
+		histogram.Update(rand.Float64())
 		deltaCounter.Inc(10)
 		time.Sleep(time.Second * 10)
 	}
