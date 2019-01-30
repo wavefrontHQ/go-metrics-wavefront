@@ -17,6 +17,7 @@ type WavefrontMetricsReporter interface {
 	Start()
 	Stop()
 	Report()
+	ErrorsCount() int64
 }
 
 type reporter struct {
@@ -30,6 +31,8 @@ type reporter struct {
 	percentiles  []float64              // Percentiles to export from timers and histograms
 	durationUnit time.Duration          // Time conversion unit for durations
 	metrics      map[string]interface{} // for Wavefron specific metrics tyoes, like Histograms
+	errors       chan error
+	errorsCount  int64
 }
 
 // Option allow WavefrontReporter customization
@@ -74,33 +77,48 @@ func New(sender wf.Sender, application application.Tags, setters ...Option) Wave
 		durationUnit: time.Nanosecond,
 		metrics:      make(map[string]interface{}),
 		addSuffix:    true,
+		errorsCount:  0,
 	}
 
 	for _, setter := range setters {
 		setter(r)
 	}
 
+	r.errors = make(chan error)
+	go func() {
+		for error := range r.errors {
+			if error != nil {
+				r.errorsCount++
+				log.Printf("(%d) reporter error: %v\n", r.errorsCount, error)
+			}
+		}
+	}()
+
 	// r.Start()
 
 	return r
+}
+
+func (r *reporter) ErrorsCount() int64 {
+	return r.errorsCount
 }
 
 func (r *reporter) Report() {
 	log.Printf("reporting....\n")
 	metrics.DefaultRegistry.Each(func(key string, metric interface{}) {
 		name, tags := DecodeKey(key)
-		log.Printf("reporting metric: %s\n", r.prepareName(name))
+		log.Printf("reporting metric: '%s'\n", r.prepareName(name))
 		switch metric.(type) {
 		case metrics.Counter:
 			if hasDeltaPrefix(name) {
 				r.reportDelta(name, metric.(metrics.Counter), tags)
 			} else {
-				r.sender.SendMetric(r.prepareName(name, "count"), float64(metric.(metrics.Counter).Count()), 0, r.source, tags)
+				r.errors <- r.sender.SendMetric(r.prepareName(name, "count"), float64(metric.(metrics.Counter).Count()), 0, r.source, tags)
 			}
 		case metrics.Gauge:
-			r.sender.SendMetric(r.prepareName(name, "value"), float64(metric.(metrics.Gauge).Value()), 0, r.source, tags)
+			r.errors <- r.sender.SendMetric(r.prepareName(name, "value"), float64(metric.(metrics.Gauge).Value()), 0, r.source, tags)
 		case metrics.GaugeFloat64:
-			r.sender.SendMetric(r.prepareName(name, "value"), float64(metric.(metrics.GaugeFloat64).Value()), 0, r.source, tags)
+			r.errors <- r.sender.SendMetric(r.prepareName(name, "value"), float64(metric.(metrics.GaugeFloat64).Value()), 0, r.source, tags)
 		case Histogram:
 			r.reportWFHistogram(name, metric.(Histogram), tags)
 		case metrics.Histogram:
@@ -123,57 +141,57 @@ func (r *reporter) reportDelta(name string, metric metrics.Counter, tags map[str
 	value := metric.Count()
 	metric.Dec(value)
 
-	r.sender.SendDeltaCounter(deltaPrefix+r.prepareName(prunedName, "count"), float64(value), r.source, tags)
+	r.errors <- r.sender.SendDeltaCounter(deltaPrefix+r.prepareName(prunedName, "count"), float64(value), r.source, tags)
 }
 
 func (r *reporter) reportWFHistogram(metricName string, h Histogram, tags map[string]string) {
 	distributions := h.Distributions()
 	hgs := map[histogram.HistogramGranularity]bool{h.Granularity(): true}
 	for _, distribution := range distributions {
-		r.sender.SendDistribution(r.prepareName(metricName), distribution.Centroids, hgs, distribution.Timestamp.Unix(), r.source, tags)
+		r.errors <- r.sender.SendDistribution(r.prepareName(metricName), distribution.Centroids, hgs, distribution.Timestamp.Unix(), r.source, tags)
 	}
 }
 
 func (r *reporter) reportHistogram(name string, metric metrics.Histogram, tags map[string]string) {
 	h := metric.Snapshot()
 	ps := h.Percentiles(r.percentiles)
-	r.sender.SendMetric(r.prepareName(name+".count"), float64(h.Count()), 0, r.source, tags)
-	r.sender.SendMetric(r.prepareName(name+".min"), float64(h.Min()), 0, r.source, tags)
-	r.sender.SendMetric(r.prepareName(name+".max"), float64(h.Max()), 0, r.source, tags)
-	r.sender.SendMetric(r.prepareName(name+".mean"), h.Mean(), 0, r.source, tags)
-	r.sender.SendMetric(r.prepareName(name+".std-dev"), h.StdDev(), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".count"), float64(h.Count()), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".min"), float64(h.Min()), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".max"), float64(h.Max()), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".mean"), h.Mean(), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".std-dev"), h.StdDev(), 0, r.source, tags)
 	for psIdx, psKey := range r.percentiles {
 		key := strings.Replace(strconv.FormatFloat(psKey*100.0, 'f', -1, 64), ".", "", 1)
-		r.sender.SendMetric(r.prepareName(name+"."+key+"-percentile"), ps[psIdx], 0, r.source, tags)
+		r.errors <- r.sender.SendMetric(r.prepareName(name+"."+key+"-percentile"), ps[psIdx], 0, r.source, tags)
 	}
 }
 
 func (r *reporter) reportMeter(name string, metric metrics.Meter, tags map[string]string) {
 	m := metric.Snapshot()
-	r.sender.SendMetric(r.prepareName(name+".count"), float64(m.Count()), 0, r.source, tags)
-	r.sender.SendMetric(r.prepareName(name+".one-minute"), m.Rate1(), 0, r.source, tags)
-	r.sender.SendMetric(r.prepareName(name+".five-minute"), m.Rate5(), 0, r.source, tags)
-	r.sender.SendMetric(r.prepareName(name+".fifteen-minute"), m.Rate15(), 0, r.source, tags)
-	r.sender.SendMetric(r.prepareName(name+".mean"), m.RateMean(), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".count"), float64(m.Count()), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".one-minute"), m.Rate1(), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".five-minute"), m.Rate5(), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".fifteen-minute"), m.Rate15(), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".mean"), m.RateMean(), 0, r.source, tags)
 }
 
 func (r *reporter) reportTimer(name string, metric metrics.Timer, tags map[string]string) {
 	t := metric.Snapshot()
 	du := float64(r.durationUnit)
 	ps := t.Percentiles(r.percentiles)
-	r.sender.SendMetric(r.prepareName(name+".count"), float64(t.Count()), 0, r.source, tags)
-	r.sender.SendMetric(r.prepareName(name+".min"), float64(t.Min()/int64(du)), 0, r.source, tags)
-	r.sender.SendMetric(r.prepareName(name+".max"), float64(t.Max()/int64(du)), 0, r.source, tags)
-	r.sender.SendMetric(r.prepareName(name+".mean"), t.Mean()/du, 0, r.source, tags)
-	r.sender.SendMetric(r.prepareName(name+".std-dev"), t.StdDev()/du, 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".count"), float64(t.Count()), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".min"), float64(t.Min()/int64(du)), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".max"), float64(t.Max()/int64(du)), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".mean"), t.Mean()/du, 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".std-dev"), t.StdDev()/du, 0, r.source, tags)
 	for psIdx, psKey := range r.percentiles {
 		key := strings.Replace(strconv.FormatFloat(psKey*100.0, 'f', -1, 64), ".", "", 1)
-		r.sender.SendMetric(r.prepareName(name+"."+key+"-percentile"), ps[psIdx]/du, 0, r.source, tags)
+		r.errors <- r.sender.SendMetric(r.prepareName(name+"."+key+"-percentile"), ps[psIdx]/du, 0, r.source, tags)
 	}
-	r.sender.SendMetric(r.prepareName(name+".one-minute"), t.Rate1(), 0, r.source, tags)
-	r.sender.SendMetric(r.prepareName(name+".five-minute"), t.Rate5(), 0, r.source, tags)
-	r.sender.SendMetric(r.prepareName(name+".fifteen-minute"), t.Rate15(), 0, r.source, tags)
-	r.sender.SendMetric(r.prepareName(name+".mean-rate"), t.RateMean(), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".one-minute"), t.Rate1(), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".five-minute"), t.Rate5(), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".fifteen-minute"), t.Rate15(), 0, r.source, tags)
+	r.errors <- r.sender.SendMetric(r.prepareName(name+".mean-rate"), t.RateMean(), 0, r.source, tags)
 }
 
 func (r *reporter) prepareName(name string, suffix ...string) string {

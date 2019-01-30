@@ -31,6 +31,26 @@ func TestPrefixAndSuffix(t *testing.T) {
 	assert.Equal(t, name, "name")
 }
 
+func TestError(t *testing.T) {
+	metrics.DefaultRegistry.UnregisterAll()
+
+	sender := &MockSender{}
+	reporter := New(sender, application.New("app", "srv"))
+	tags := map[string]string{"tag1": "tag"}
+
+	RegisterMetric("", metrics.NewCounter(), tags)
+
+	c := metrics.NewCounter()
+	RegisterMetric("m1", c, tags)
+	c.Inc(1)
+
+	reporter.Report()
+	time.Sleep(time.Millisecond) // wait for the error channel to work
+
+	assert.Equal(t, 1, len(sender.Metrics))
+	assert.Equal(t, int64(1), reporter.ErrorsCount())
+}
+
 func TestBasicCounter(t *testing.T) {
 	metrics.DefaultRegistry.UnregisterAll()
 
@@ -152,6 +172,9 @@ func (s *MockSender) SendDeltaCounter(name string, value float64, source string,
 }
 
 func (s *MockSender) SendMetric(name string, value float64, ts int64, source string, tags map[string]string) error {
+	if name == ".count" {
+		return fmt.Errorf("empty metric name")
+	}
 	s.Metrics = append(s.Metrics, name)
 	return nil
 }
