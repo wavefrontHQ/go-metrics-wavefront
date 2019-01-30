@@ -169,7 +169,9 @@ func (r *reporter) reportWFHistogram(metricName string, h Histogram, tags map[st
 	distributions := h.Distributions()
 	hgs := map[histogram.HistogramGranularity]bool{h.Granularity(): true}
 	for _, distribution := range distributions {
-		r.errors <- r.sender.SendDistribution(r.prepareName(metricName), distribution.Centroids, hgs, distribution.Timestamp.Unix(), r.source, tags)
+		if len(distribution.Centroids) > 0 {
+			r.errors <- r.sender.SendDistribution(r.prepareName(metricName), distribution.Centroids, hgs, distribution.Timestamp.Unix(), r.source, tags)
+		}
 	}
 }
 
