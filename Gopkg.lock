@@ -43,7 +43,7 @@
 
 [[projects]]
   branch = "laullon/histo_update"
-  digest = "1:f7aa691a82103472d6aab2f5003d7d798222ac2553eff6edabc45ecc5fd3db65"
+  digest = "1:b7107e765c0b0e282a8e268b6882d4aa865b2476185591ecc1f8b244c344aaed"
   name = "github.com/wavefronthq/wavefront-sdk-go"
   packages = [
     "application",
@@ -52,7 +52,7 @@
     "senders",
   ]
   pruneopts = "UT"
-  revision = "f7801f69298420c44bb2b3af4c05a67c20920d10"
+  revision = "bd7a360407344533093ab00d78635547018a412d"
 
 [solve-meta]
   analyzer-name = "dep"

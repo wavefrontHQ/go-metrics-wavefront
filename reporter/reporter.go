@@ -125,8 +125,8 @@ func (r *reporter) Report() {
 			r.sender.SendMetric(r.prepareName(name, "value"), float64(metric.(metrics.Gauge).Value()), 0, r.source, tags)
 		case metrics.GaugeFloat64:
 			r.sender.SendMetric(r.prepareName(name, "value"), float64(metric.(metrics.GaugeFloat64).Value()), 0, r.source, tags)
-		case histogram.Histogram:
-			r.reportWFHistogram(name, metric.(histogram.Histogram), tags)
+		case Histogram:
+			r.reportWFHistogram(name, metric.(Histogram), tags)
 		case metrics.Histogram:
 			r.reportHistogram(name, metric.(metrics.Histogram), tags)
 		case metrics.Meter:
@@ -150,7 +150,7 @@ func (r *reporter) reportDelta(name string, metric metrics.Counter, tags map[str
 	r.sender.SendDeltaCounter(deltaPrefix+r.prepareName(prunedName, "count"), float64(value), r.source, tags)
 }
 
-func (r *reporter) reportWFHistogram(metricName string, h histogram.Histogram, tags map[string]string) {
+func (r *reporter) reportWFHistogram(metricName string, h Histogram, tags map[string]string) {
 	distributions := h.Distributions()
 	hgs := map[histogram.HistogramGranularity]bool{h.Granularity(): true}
 	for _, distribution := range distributions {

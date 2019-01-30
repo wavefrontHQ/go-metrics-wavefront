@@ -51,24 +51,6 @@ func TestBasicCounter(t *testing.T) {
 	assert.Equal(t, 1, len(sender.Metrics))
 }
 
-func TestWFHistogramAPI(t *testing.T) {
-	h := histogram.New()
-
-	switch h.(type) {
-	case metrics.Histogram:
-		t.Log("-- metrics.Histogram --")
-	default:
-		t.Fatalf("the histogram is not 'metrics.Histogram'")
-	}
-
-	switch h.(type) {
-	case histogram.Histogram:
-		t.Log("-- histogram.Histogram --")
-	default:
-		t.Fatalf("the histogram is not 'histogram.Histogram'")
-	}
-}
-
 func TestWFHistogram(t *testing.T) {
 	metrics.DefaultRegistry.UnregisterAll()
 
@@ -76,7 +58,8 @@ func TestWFHistogram(t *testing.T) {
 	reporter := New(sender, application.New("app", "srv"))
 	tags := map[string]string{"tag1": "tag"}
 
-	h := histogram.New(histogram.Granularity(histogram.SECOND))
+	h := NewHistogram(histogram.Granularity(histogram.SECOND))
+	// h := NewHistogram()
 	RegisterMetric("wf.histogram", h, tags)
 
 	for i := 0; i < 1000; i++ {
