@@ -1,4 +1,4 @@
-package reporter
+package reporting
 
 import (
 	"fmt"
@@ -35,7 +35,7 @@ func TestError(t *testing.T) {
 	metrics.DefaultRegistry.UnregisterAll()
 
 	sender := &MockSender{}
-	reporter := New(sender, application.New("app", "srv"), LogErrors(true))
+	reporter := NewReporter(sender, application.New("app", "srv"), LogErrors(true))
 	tags := map[string]string{"tag1": "tag"}
 
 	RegisterMetric("", metrics.NewCounter(), tags)
@@ -55,7 +55,7 @@ func TestBasicCounter(t *testing.T) {
 	metrics.DefaultRegistry.UnregisterAll()
 
 	sender := &MockSender{}
-	reporter := New(sender, application.New("app", "srv"))
+	reporter := NewReporter(sender, application.New("app", "srv"))
 	tags := map[string]string{"tag1": "tag"}
 
 	name := "counter"
@@ -75,10 +75,10 @@ func TestWFHistogram(t *testing.T) {
 	metrics.DefaultRegistry.UnregisterAll()
 
 	sender := &MockSender{}
-	reporter := New(sender, application.New("app", "srv"))
+	reporter := NewReporter(sender, application.New("app", "srv"))
 	tags := map[string]string{"tag1": "tag"}
 
-	h := NewHistogram(histogram.Granularity(histogram.SECOND))
+	h := NewHistogram(histogram.GranularityOption(histogram.MINUTE))
 	// h := NewHistogram()
 	RegisterMetric("wf.histogram", h, tags)
 
@@ -86,7 +86,7 @@ func TestWFHistogram(t *testing.T) {
 		h.Update(rand.Int63())
 	}
 
-	time.Sleep(time.Second * 2) // wait until the histogram rotates
+	time.Sleep(time.Minute * 2) // wait until the histogram rotates
 
 	reporter.Report()
 
@@ -101,7 +101,7 @@ func TestHistogram(t *testing.T) {
 	metrics.DefaultRegistry.UnregisterAll()
 
 	sender := &MockSender{}
-	reporter := New(sender, application.New("app", "srv"))
+	reporter := NewReporter(sender, application.New("app", "srv"))
 	tags := map[string]string{"tag1": "tag"}
 
 	s := metrics.NewExpDecaySample(1028, 0.015) // or metrics.NewUniformSample(1028)
@@ -125,7 +125,7 @@ func TestDeltaPoint(t *testing.T) {
 	metrics.DefaultRegistry.UnregisterAll()
 
 	sender := &MockSender{}
-	reporter := New(sender, application.New("app", "srv"))
+	reporter := NewReporter(sender, application.New("app", "srv"))
 	tags := map[string]string{"tag1": "tag"}
 
 	counter := metrics.NewCounter()
@@ -161,7 +161,7 @@ func (s MockSender) SendSpan(name string, startMillis, durationMillis int64, sou
 	return nil
 }
 
-func (s *MockSender) SendDistribution(name string, centroids []histogram.Centroid, hgs map[histogram.HistogramGranularity]bool, ts int64, source string, tags map[string]string) error {
+func (s *MockSender) SendDistribution(name string, centroids []histogram.Centroid, hgs map[histogram.Granularity]bool, ts int64, source string, tags map[string]string) error {
 	s.Distributions = append(s.Distributions, name)
 	return nil
 }

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	metrics "github.com/rcrowley/go-metrics"
-	wavefront "github.com/wavefronthq/go-metrics-wavefront/reporter"
+	wavefront "github.com/wavefronthq/go-metrics-wavefront/reporting"
 	"github.com/wavefronthq/wavefront-sdk-go/application"
 	"github.com/wavefronthq/wavefront-sdk-go/histogram"
 	"github.com/wavefronthq/wavefront-sdk-go/senders"
@@ -49,7 +49,7 @@ func main() {
 		panic(err)
 	}
 
-	reporter := wavefront.New(
+	reporter := wavefront.NewReporter(
 		sender,
 		application.New("app", "srv"),
 		wavefront.Source("go-metrics-test"),

@@ -1,4 +1,4 @@
-package reporter
+package reporting
 
 import (
 	metrics "github.com/rcrowley/go-metrics"
@@ -7,12 +7,12 @@ import (
 
 // Histogram wrapper of WF Histogram so it can be used on metrics.Registry
 type Histogram struct {
-	delgate histogram.Histogram
+	delegate histogram.Histogram
 }
 
 // NewHistogram create a new WF Histogram and the wrapper
 func NewHistogram(options ...histogram.Option) metrics.Histogram {
-	return Histogram{delgate: histogram.New(options...)}
+	return Histogram{delegate: histogram.New(options...)}
 }
 
 // Clear will panic
@@ -22,32 +22,32 @@ func (h Histogram) Clear() {
 
 // Count returns the total number of samples on this histogram.
 func (h Histogram) Count() int64 {
-	return int64(h.delgate.Count())
+	return int64(h.delegate.Count())
 }
 
 // Min returns the minimun Value of samples on this histogram.
 func (h Histogram) Min() int64 {
-	return int64(h.delgate.Min())
+	return int64(h.delegate.Min())
 }
 
 // Max returns the maximun Value of samples on this histogram.
 func (h Histogram) Max() int64 {
-	return int64(h.delgate.Max())
+	return int64(h.delegate.Max())
 }
 
 // Sum returns the sum of all values on this histogram.
 func (h Histogram) Sum() int64 {
-	return int64(h.delgate.Sum())
+	return int64(h.delegate.Sum())
 }
 
 // Mean returns the mean values of samples on this histogram.
 func (h Histogram) Mean() float64 {
-	return h.delgate.Mean()
+	return h.delegate.Mean()
 }
 
 // Update registers a new sample in the histogram.
 func (h Histogram) Update(v int64) {
-	h.delgate.Update(float64(v))
+	h.delegate.Update(float64(v))
 }
 
 // Sample will panic
@@ -58,7 +58,7 @@ func (h Histogram) Sample() metrics.Sample {
 // Snapshot create a metrics.Histogram
 func (h Histogram) Snapshot() metrics.Histogram {
 	sample := metrics.NewUniformSample(int(h.Count()))
-	for _, distribution := range h.delgate.Snapshot() {
+	for _, distribution := range h.delegate.Snapshot() {
 		for _, centroid := range distribution.Centroids {
 			for i := 0; i < centroid.Count; i++ {
 				sample.Update(int64(centroid.Value))
@@ -80,7 +80,7 @@ func (h Histogram) Variance() float64 {
 
 // Percentile returns the desired percentile estimation.
 func (h Histogram) Percentile(p float64) float64 {
-	return h.delgate.Quantile(p)
+	return h.delegate.Quantile(p)
 }
 
 // Percentiles returns a slice of arbitrary percentiles of values in the sample
@@ -94,10 +94,10 @@ func (h Histogram) Percentiles(ps []float64) []float64 {
 
 // Distributions returns all samples on comlepted time slices, and clear the histogram
 func (h Histogram) Distributions() []histogram.Distribution {
-	return h.delgate.Distributions()
+	return h.delegate.Distributions()
 }
 
 // Granularity value
-func (h Histogram) Granularity() histogram.HistogramGranularity {
-	return h.delgate.Granularity()
+func (h Histogram) Granularity() histogram.Granularity {
+	return h.delegate.Granularity()
 }

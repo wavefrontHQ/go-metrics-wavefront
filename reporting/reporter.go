@@ -1,7 +1,8 @@
-package reporter
+package reporting
 
 import (
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -85,12 +86,12 @@ func AddSuffix(addSuffix bool) Option {
 	}
 }
 
-// New create a WavefrontMetricsReporter
-func New(sender wf.Sender, application application.Tags, setters ...Option) WavefrontMetricsReporter {
+// NewReporter create a WavefrontMetricsReporter
+func NewReporter(sender wf.Sender, application application.Tags, setters ...Option) WavefrontMetricsReporter {
 	r := &reporter{
 		sender:       sender,
 		application:  application,
-		source:       "mySource",
+		source:       hostname(),
 		interval:     time.Second * 5,
 		percentiles:  []float64{0.5, 0.75, 0.95, 0.99, 0.999},
 		durationUnit: time.Nanosecond,
@@ -146,7 +147,7 @@ func (r *reporter) Report() {
 	})
 	actualErrorsCount := r.ErrorsCount()
 	if actualErrorsCount != lastErrorsCount {
-		log.Printf("!!! There was %d errors on the las reporting cycle !!!", (actualErrorsCount - lastErrorsCount))
+		log.Printf("!!! There was %d errors on the last reporting cycle !!!", (actualErrorsCount - lastErrorsCount))
 	}
 }
 
@@ -165,7 +166,7 @@ func (r *reporter) reportDelta(name string, metric metrics.Counter, tags map[str
 
 func (r *reporter) reportWFHistogram(metricName string, h Histogram, tags map[string]string) {
 	distributions := h.Distributions()
-	hgs := map[histogram.HistogramGranularity]bool{h.Granularity(): true}
+	hgs := map[histogram.Granularity]bool{h.Granularity(): true}
 	for _, distribution := range distributions {
 		if len(distribution.Centroids) > 0 {
 			r.errors <- r.sender.SendDistribution(r.prepareName(metricName), distribution.Centroids, hgs, distribution.Timestamp.Unix(), r.source, tags)
@@ -256,4 +257,12 @@ func (r *reporter) Start() {
 func (r *reporter) Stop() {
 	r.stop <- true
 	r.Report()
+}
+
+func hostname() string {
+	name, err := os.Hostname()
+	if err != nil {
+		name = "go-metrics-wavefront"
+	}
+	return name
 }

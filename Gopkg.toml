@@ -4,7 +4,7 @@
 
 # TODO: change to wavefront-sdk-go version
 [[constraint]]
-  branch = "laullon/histo_update"
+  revision = "0284c23763dfb2df983531dc2980b41b19864683"
   name = "github.com/wavefronthq/wavefront-sdk-go"
 
 [prune]
