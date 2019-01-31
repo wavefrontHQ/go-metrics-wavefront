@@ -5,61 +5,77 @@ import (
 	"github.com/wavefronthq/wavefront-sdk-go/histogram"
 )
 
+// Histogram wrapper of WF Histogram so it can be used on metrics.Registry
 type Histogram struct {
 	delgate histogram.Histogram
 }
 
+// NewHistogram create a new WF Histogram and the wrapper
 func NewHistogram(options ...histogram.Option) metrics.Histogram {
 	return Histogram{delgate: histogram.New(options...)}
 }
 
-// Clear all samples on the histogram
+// Clear will panic
 func (h Histogram) Clear() {
-	panic("Clear called on a HistogramSnapshot")
+	panic("Clear called on a Histogram")
 }
 
+// Count returns the total number of samples on this histogram.
 func (h Histogram) Count() int64 {
 	return int64(h.delgate.Count())
 }
 
+// Min returns the minimun Value of samples on this histogram.
 func (h Histogram) Min() int64 {
 	return int64(h.delgate.Min())
 }
 
+// Max returns the maximun Value of samples on this histogram.
 func (h Histogram) Max() int64 {
 	return int64(h.delgate.Max())
 }
 
+// Sum returns the sum of all values on this histogram.
 func (h Histogram) Sum() int64 {
 	return int64(h.delgate.Sum())
 }
 
+// Mean returns the mean values of samples on this histogram.
 func (h Histogram) Mean() float64 {
 	return h.delgate.Mean()
 }
 
+// Update registers a new sample in the histogram.
 func (h Histogram) Update(v int64) {
 	h.delgate.Update(float64(v))
 }
 
 // Sample will panic
 func (h Histogram) Sample() metrics.Sample {
-	panic("Sample called on a HistogramSnapshot")
+	panic("Sample not supported")
 }
 
-// Snapshot will panic
-// no need for a snapshot
+// Snapshot create a metrics.Histogram
 func (h Histogram) Snapshot() metrics.Histogram {
-	panic("Snapshot called on a HistogramSnapshot")
+	sample := metrics.NewUniformSample(int(h.Count()))
+	for _, distribution := range h.delgate.Snapshot() {
+		for _, centroid := range distribution.Centroids {
+			for i := 0; i < centroid.Count; i++ {
+				sample.Update(int64(centroid.Value))
+			}
+		}
+	}
+	return metrics.NewHistogram(sample)
 }
 
-// TODO: review Min, Max, etc....
+// StdDev returns the standard deviation.
 func (h Histogram) StdDev() float64 {
-	panic("StdDev called on a HistogramSnapshot")
+	return h.Snapshot().StdDev()
 }
 
+// Variance returns the variance of inputs.
 func (h Histogram) Variance() float64 {
-	panic("Variance called on a HistogramSnapshot")
+	return h.Snapshot().Variance()
 }
 
 // Percentile returns the desired percentile estimation.
@@ -67,6 +83,7 @@ func (h Histogram) Percentile(p float64) float64 {
 	return h.delgate.Quantile(p)
 }
 
+// Percentiles returns a slice of arbitrary percentiles of values in the sample
 func (h Histogram) Percentiles(ps []float64) []float64 {
 	var res []float64
 	for _, p := range ps {
@@ -75,10 +92,12 @@ func (h Histogram) Percentiles(ps []float64) []float64 {
 	return res
 }
 
+// Distributions returns all samples on comlepted time slices, and clear the histogram
 func (h Histogram) Distributions() []histogram.Distribution {
 	return h.delgate.Distributions()
 }
 
+// Granularity value
 func (h Histogram) Granularity() histogram.HistogramGranularity {
 	return h.delgate.Granularity()
 }

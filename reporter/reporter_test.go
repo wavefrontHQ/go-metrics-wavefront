@@ -35,7 +35,7 @@ func TestError(t *testing.T) {
 	metrics.DefaultRegistry.UnregisterAll()
 
 	sender := &MockSender{}
-	reporter := New(sender, application.New("app", "srv"))
+	reporter := New(sender, application.New("app", "srv"), LogErrors(true))
 	tags := map[string]string{"tag1": "tag"}
 
 	RegisterMetric("", metrics.NewCounter(), tags)

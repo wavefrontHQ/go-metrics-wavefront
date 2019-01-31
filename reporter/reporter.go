@@ -4,7 +4,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	metrics "github.com/rcrowley/go-metrics"
@@ -22,7 +22,6 @@ type WavefrontMetricsReporter interface {
 }
 
 type reporter struct {
-	mutex        sync.Mutex
 	sender       wf.Sender
 	application  application.Tags
 	source       string
@@ -35,12 +34,21 @@ type reporter struct {
 	metrics      map[string]interface{} // for Wavefron specific metrics tyoes, like Histograms
 	errors       chan error
 	errorsCount  int64
+	errorDebug   bool
 	stop         chan bool
 	autoStart    bool
+	running      bool
 }
 
 // Option allow WavefrontReporter customization
 type Option func(*reporter)
+
+// LogErrors tag for metrics
+func LogErrors(debug bool) Option {
+	return func(args *reporter) {
+		args.errorDebug = debug
+	}
+}
 
 // Source tag for metrics
 func Source(source string) Option {
@@ -100,17 +108,6 @@ func New(sender wf.Sender, application application.Tags, setters ...Option) Wave
 	r.stop = make(chan bool, 1)
 	r.errors = make(chan error)
 
-	go func() {
-		for error := range r.errors {
-			if error != nil {
-				r.mutex.Lock()
-				r.errorsCount++
-				log.Printf("(%d) reporter error: %v\n", r.errorsCount, error)
-				r.mutex.Unlock()
-			}
-		}
-	}()
-
 	if r.autoStart {
 		r.Start()
 	}
@@ -119,16 +116,13 @@ func New(sender wf.Sender, application application.Tags, setters ...Option) Wave
 }
 
 func (r *reporter) ErrorsCount() int64 {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-	return r.errorsCount
+	return atomic.LoadInt64(&r.errorsCount)
 }
 
 func (r *reporter) Report() {
-	log.Printf("reporting....\n")
+	lastErrorsCount := r.ErrorsCount()
 	metrics.DefaultRegistry.Each(func(key string, metric interface{}) {
 		name, tags := DecodeKey(key)
-		log.Printf("reporting metric: '%s'\n", r.prepareName(name))
 		switch metric.(type) {
 		case metrics.Counter:
 			if hasDeltaPrefix(name) {
@@ -150,6 +144,10 @@ func (r *reporter) Report() {
 			r.reportTimer(name, metric.(metrics.Timer), tags)
 		}
 	})
+	actualErrorsCount := r.ErrorsCount()
+	if actualErrorsCount != lastErrorsCount {
+		log.Printf("!!! There was %d errors on the las reporting cycle !!!", (actualErrorsCount - lastErrorsCount))
+	}
 }
 
 func (r *reporter) reportDelta(name string, metric metrics.Counter, tags map[string]string) {
@@ -232,16 +230,27 @@ func (r *reporter) prepareName(name string, suffix ...string) string {
 }
 
 func (r *reporter) Start() {
-	go func() {
-		for {
-			select {
-			case <-r.ticker.C:
-				r.Report()
-			case <-r.stop:
-				return
+	if !r.running {
+		go func() {
+			r.running = true
+			for {
+				select {
+				case <-r.ticker.C:
+					r.Report()
+				case error := <-r.errors:
+					if error != nil {
+						atomic.AddInt64(&r.errorsCount, 1)
+						if r.errorDebug {
+							log.Printf("reporter error: %v\n", error)
+						}
+					}
+				case <-r.stop:
+					r.running = false
+					return
+				}
 			}
-		}
-	}()
+		}()
+	}
 }
 
 func (r *reporter) Stop() {
