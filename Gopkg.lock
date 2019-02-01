@@ -42,7 +42,8 @@
   version = "v1.3.0"
 
 [[projects]]
-  digest = "1:cbe860ffd996575a307171c4f2283f6faecf7a95f0e269c43bff6449578c981a"
+  branch = "laullon/race_bug"
+  digest = "1:9333f3366eb71e8cccda8b572b4ea7f1857684a60ddc929498f09a2fef0f6555"
   name = "github.com/wavefronthq/wavefront-sdk-go"
   packages = [
     "application",
@@ -51,7 +52,7 @@
     "senders",
   ]
   pruneopts = "UT"
-  revision = "0284c23763dfb2df983531dc2980b41b19864683"
+  revision = "f976551e9130d44b82ce12ab6620ded6988943fb"
 
 [solve-meta]
   analyzer-name = "dep"
