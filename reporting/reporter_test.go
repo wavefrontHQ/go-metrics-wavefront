@@ -72,6 +72,10 @@ func TestBasicCounter(t *testing.T) {
 }
 
 func TestWFHistogram(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping Histogram tests in short mode")
+	}
+
 	metrics.DefaultRegistry.UnregisterAll()
 
 	sender := &MockSender{}
