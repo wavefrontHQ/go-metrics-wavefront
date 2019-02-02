@@ -4,7 +4,7 @@
 
 # TODO: change to wavefront-sdk-go version
 [[constraint]]
-  branch = "laullon/race_bug"
+  branch = "master"
   name = "github.com/wavefronthq/wavefront-sdk-go"
 
 [prune]

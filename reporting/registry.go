@@ -1,20 +1,32 @@
 package reporting
 
 import (
-	"log"
+	"fmt"
 	"reflect"
 
 	metrics "github.com/rcrowley/go-metrics"
 )
 
+// RegistryError returned if there is any error on RegisterMetric
+type RegistryError string
+
+func (err RegistryError) Error() string {
+	return fmt.Sprintf("Registry Error: %s", string(err))
+}
+
 // RegisterMetric tag support for metrics.Register()
-func RegisterMetric(name string, metric interface{}, tags map[string]string) {
+// return RegistryError if the mertrics is not registered
+func RegisterMetric(name string, metric interface{}, tags map[string]string) error {
 	key := EncodeKey(name, tags)
-	metrics.Register(key, metric)
+	err := metrics.Register(key, metric)
+	if err != nil {
+		return err
+	}
 	m := GetMetric(name, tags)
 	if m == nil {
-		log.Printf("[ERROR] metric '%s'(%s) not registered !!!", name, reflect.TypeOf(metric).String())
+		return RegistryError(fmt.Sprintf("Metric '%s'(%s) not registered.", name, reflect.TypeOf(metric).String()))
 	}
+	return nil
 }
 
 // GetMetric tag support for metrics.Get()
