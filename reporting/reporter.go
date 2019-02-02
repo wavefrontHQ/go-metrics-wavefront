@@ -18,6 +18,7 @@ import (
 type WavefrontMetricsReporter interface {
 	Start()
 	Stop()
+	Close()
 	Report()
 	ErrorsCount() int64
 }
@@ -36,7 +37,7 @@ type reporter struct {
 	errors       chan error
 	errorsCount  int64
 	errorDebug   bool
-	stop         chan bool
+	close        chan bool
 	autoStart    bool
 	running      bool
 }
@@ -106,8 +107,28 @@ func NewReporter(sender wf.Sender, application application.Tags, setters ...Opti
 	}
 
 	r.ticker = time.NewTicker(r.interval)
-	r.stop = make(chan bool, 1)
+	r.close = make(chan bool, 1)
 	r.errors = make(chan error)
+
+	go func() {
+		for {
+			select {
+			case <-r.ticker.C:
+				if r.running {
+					r.Report()
+				}
+			case error := <-r.errors:
+				if error != nil {
+					atomic.AddInt64(&r.errorsCount, 1)
+					if r.errorDebug {
+						log.Printf("reporter error: %v\n", error)
+					}
+				}
+			case <-r.close:
+				return
+			}
+		}
+	}()
 
 	if r.autoStart {
 		r.Start()
@@ -231,32 +252,17 @@ func (r *reporter) prepareName(name string, suffix ...string) string {
 }
 
 func (r *reporter) Start() {
-	if !r.running {
-		go func() {
-			r.running = true
-			for {
-				select {
-				case <-r.ticker.C:
-					r.Report()
-				case error := <-r.errors:
-					if error != nil {
-						atomic.AddInt64(&r.errorsCount, 1)
-						if r.errorDebug {
-							log.Printf("reporter error: %v\n", error)
-						}
-					}
-				case <-r.stop:
-					r.running = false
-					return
-				}
-			}
-		}()
-	}
+	r.running = true
 }
 
 func (r *reporter) Stop() {
-	r.stop <- true
+	r.running = false
 	r.Report()
+}
+
+func (r *reporter) Close() {
+	r.Report()
+	r.close <- true
 }
 
 func hostname() string {

@@ -35,7 +35,7 @@ func TestError(t *testing.T) {
 	metrics.DefaultRegistry.UnregisterAll()
 
 	sender := &MockSender{}
-	reporter := NewReporter(sender, application.New("app", "srv"), LogErrors(true))
+	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(), LogErrors(true))
 	tags := map[string]string{"tag1": "tag"}
 
 	RegisterMetric("", metrics.NewCounter(), tags)
@@ -45,17 +45,18 @@ func TestError(t *testing.T) {
 	c.Inc(1)
 
 	reporter.Report()
-	time.Sleep(time.Millisecond) // wait for the error channel to work
 
 	assert.Equal(t, 1, len(sender.Metrics))
 	assert.Equal(t, int64(1), reporter.ErrorsCount())
+
+	reporter.Close()
 }
 
 func TestBasicCounter(t *testing.T) {
 	metrics.DefaultRegistry.UnregisterAll()
 
 	sender := &MockSender{}
-	reporter := NewReporter(sender, application.New("app", "srv"))
+	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(), LogErrors(true))
 	tags := map[string]string{"tag1": "tag"}
 
 	name := "counter"
@@ -69,6 +70,8 @@ func TestBasicCounter(t *testing.T) {
 	reporter.Report()
 
 	assert.Equal(t, 1, len(sender.Metrics))
+
+	reporter.Close()
 }
 
 func TestWFHistogram(t *testing.T) {
@@ -78,8 +81,8 @@ func TestWFHistogram(t *testing.T) {
 
 	metrics.DefaultRegistry.UnregisterAll()
 
-	sender := &MockSender{}
-	reporter := NewReporter(sender, application.New("app", "srv"))
+	sender := newMockSender()
+	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(), LogErrors(true))
 	tags := map[string]string{"tag1": "tag"}
 
 	h := NewHistogram(histogram.GranularityOption(histogram.MINUTE))
@@ -99,13 +102,15 @@ func TestWFHistogram(t *testing.T) {
 
 	assert.Equal(t, 1, len(sender.Distributions))
 	assert.Equal(t, 0, len(sender.Metrics))
+
+	reporter.Close()
 }
 
 func TestHistogram(t *testing.T) {
 	metrics.DefaultRegistry.UnregisterAll()
 
-	sender := &MockSender{}
-	reporter := NewReporter(sender, application.New("app", "srv"))
+	sender := newMockSender()
+	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(), LogErrors(true))
 	tags := map[string]string{"tag1": "tag"}
 
 	s := metrics.NewExpDecaySample(1028, 0.015) // or metrics.NewUniformSample(1028)
@@ -123,13 +128,15 @@ func TestHistogram(t *testing.T) {
 
 	assert.Equal(t, 0, len(sender.Distributions))
 	assert.Equal(t, 10, len(sender.Metrics))
+
+	reporter.Close()
 }
 
 func TestDeltaPoint(t *testing.T) {
 	metrics.DefaultRegistry.UnregisterAll()
 
-	sender := &MockSender{}
-	reporter := NewReporter(sender, application.New("app", "srv"))
+	sender := newMockSender()
+	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(), LogErrors(true))
 	tags := map[string]string{"tag1": "tag"}
 
 	counter := metrics.NewCounter()
@@ -147,6 +154,16 @@ func TestDeltaPoint(t *testing.T) {
 	fmt.Printf("-> Metrics: %v\n", sender.Metrics)
 	assert.Equal(t, 2, len(sender.Deltas))
 	assert.Equal(t, 0, len(sender.Metrics))
+
+	reporter.Close()
+}
+
+func newMockSender() *MockSender {
+	return &MockSender{
+		Distributions: make([]string, 0),
+		Metrics:       make([]string, 0),
+		Deltas:        make([]string, 0),
+	}
 }
 
 type MockSender struct {
