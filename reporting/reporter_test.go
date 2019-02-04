@@ -56,7 +56,7 @@ func TestBasicCounter(t *testing.T) {
 	metrics.DefaultRegistry.UnregisterAll()
 
 	sender := &MockSender{}
-	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(), LogErrors(true))
+	reporter := NewReporter(sender, application.New("app", "srv"), Interval(time.Second), LogErrors(true))
 	tags := map[string]string{"tag1": "tag"}
 
 	name := "counter"
@@ -67,9 +67,9 @@ func TestBasicCounter(t *testing.T) {
 	}
 	c.(metrics.Counter).Inc(1)
 
-	reporter.Report()
+	time.Sleep(time.Second * 2) // wait  2 reporting interval
 
-	assert.Equal(t, 1, len(sender.Metrics))
+	assert.Equal(t, 2, len(sender.Metrics))
 
 	reporter.Close()
 }
