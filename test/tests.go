@@ -8,7 +8,6 @@ import (
 
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/wavefronthq/go-metrics-wavefront/reporting"
-	wavefront "github.com/wavefronthq/go-metrics-wavefront/reporting"
 	"github.com/wavefronthq/wavefront-sdk-go/application"
 	"github.com/wavefronthq/wavefront-sdk-go/senders"
 )
@@ -26,21 +25,21 @@ func main() {
 
 	counter := metrics.NewCounter()                //Create a counter
 	metrics.Register("foo2", counter)              // will create a 'some.prefix.foo2.count' metric with no tags
-	wavefront.RegisterMetric("foo", counter, tags) // will create a 'some.prefix.foo.count' metric with tags
+	reporting.RegisterMetric("foo", counter, tags) // will create a 'some.prefix.foo.count' metric with tags
 	counter.Inc(47)
 
 	histogram := reporting.NewHistogram()
-	wavefront.RegisterMetric("duration", histogram, tags) // will create a 'some.prefix.duration' histogram metric with tags
+	reporting.RegisterMetric("duration", histogram, tags) // will create a 'some.prefix.duration' histogram metric with tags
 
 	histogram2 := reporting.NewHistogram()
 	metrics.Register("duration2", histogram2) // will create a 'some.prefix.duration2' histogram metric with no tags
 
 	deltaCounter := metrics.NewCounter()
-	wavefront.RegisterMetric(wavefront.DeltaCounterName("delta.metric"), deltaCounter, tags)
+	reporting.RegisterMetric(reporting.DeltaCounterName("delta.metric"), deltaCounter, tags)
 	deltaCounter.Inc(10)
 
 	directCfg := &senders.DirectConfiguration{
-		Server:               "https://" + os.Getenv("WF_INSTANCE") + ".wavefront.com",
+		Server:               "https://" + os.Getenv("WF_INSTANCE") + ".reporting.com",
 		Token:                os.Getenv("WF_TOKEN"),
 		BatchSize:            10000,
 		MaxBufferSize:        50000,
@@ -52,14 +51,13 @@ func main() {
 		panic(err)
 	}
 
-	reporter := wavefront.NewReporter(
+	reporter := reporting.NewReporter(
 		sender,
 		application.New("app", "srv"),
-		wavefront.Source("go-metrics-test"),
-		wavefront.Prefix("some.prefix"),
-		wavefront.LogErrors(true),
+		reporting.Source("go-metrics-test"),
+		reporting.Prefix("some.prefix"),
+		reporting.LogErrors(true),
 	)
-	reporter.Start()
 
 	fmt.Println("Search wavefront: ts(\"some.prefix.foo.count\")")
 	fmt.Println("Entering loop to simulate metrics flushing. Hit ctrl+c to cancel")
