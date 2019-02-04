@@ -150,7 +150,7 @@ func (r *reporter) ErrorsCount() int64 {
 
 func (r *reporter) Report() {
 	r.mux.Lock()
-	r.mux.Unlock()
+	defer r.mux.Unlock()
 
 	lastErrorsCount := r.ErrorsCount()
 	metrics.DefaultRegistry.Each(func(key string, metric interface{}) {
