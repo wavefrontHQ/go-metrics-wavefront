@@ -51,7 +51,7 @@ func main() {
 		panic(err)
 	}
 
-	reporter := reporting.NewReporter(
+	reporting.NewReporter(
 		sender,
 		application.New("app", "srv"),
 		reporting.Source("go-metrics-test"),
