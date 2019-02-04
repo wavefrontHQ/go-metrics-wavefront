@@ -59,8 +59,8 @@ func Source(source string) Option {
 	}
 }
 
-// ReportingInterval change the default 1 minute reporting interval.
-func ReportingInterval(interval time.Duration) Option {
+// Interval change the default 1 minute reporting interval.
+func Interval(interval time.Duration) Option {
 	return func(args *reporter) {
 		args.interval = interval
 	}
