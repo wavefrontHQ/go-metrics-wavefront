@@ -3,6 +3,7 @@ package reporting
 import (
 	"fmt"
 	"math/rand"
+	"sync"
 	"testing"
 	"time"
 
@@ -45,11 +46,13 @@ func TestError(t *testing.T) {
 	c.Inc(1)
 
 	reporter.Report()
+	reporter.Close()
 
-	assert.Equal(t, 1, len(sender.Metrics))
+	_, met, _ := sender.Counters()
+
+	assert.Equal(t, 1, met)
 	assert.Equal(t, int64(1), reporter.ErrorsCount())
 
-	reporter.Close()
 }
 
 func TestBasicCounter(t *testing.T) {
@@ -67,11 +70,13 @@ func TestBasicCounter(t *testing.T) {
 	}
 	c.(metrics.Counter).Inc(1)
 
-	time.Sleep(time.Second * 2) // wait  2 reporting interval
-
-	assert.Equal(t, 2, len(sender.Metrics))
+	time.Sleep(time.Second * 3) // wait  3 reporting interval
 
 	reporter.Close()
+
+	_, met, _ := sender.Counters()
+	assert.True(t, met >= 2)
+
 }
 
 func TestWFHistogram(t *testing.T) {
@@ -97,11 +102,9 @@ func TestWFHistogram(t *testing.T) {
 
 	reporter.Report()
 
-	fmt.Printf("-> dis: %v\n", sender.Distributions)
-	fmt.Printf("-> met: %v\n", sender.Metrics)
-
-	assert.Equal(t, 1, len(sender.Distributions))
-	assert.Equal(t, 0, len(sender.Metrics))
+	dis, met, _ := sender.Counters()
+	assert.Equal(t, 1, dis)
+	assert.Equal(t, 0, met)
 
 	reporter.Close()
 }
@@ -123,11 +126,10 @@ func TestHistogram(t *testing.T) {
 
 	reporter.Report()
 
-	fmt.Printf("-> dis: %v\n", sender.Distributions)
-	fmt.Printf("-> met: %v\n", sender.Metrics)
+	dis, met, _ := sender.Counters()
 
-	assert.Equal(t, 0, len(sender.Distributions))
-	assert.Equal(t, 10, len(sender.Metrics))
+	assert.Equal(t, 0, dis)
+	assert.Equal(t, 10, met)
 
 	reporter.Close()
 }
@@ -144,51 +146,56 @@ func TestDeltaPoint(t *testing.T) {
 
 	counter.Inc(10)
 	reporter.Report()
-	fmt.Printf("-> Deltas: %v\n", sender.Deltas)
-	assert.Equal(t, 1, len(sender.Deltas))
+	_, met, del := sender.Counters()
+	assert.Equal(t, 1, del)
+	assert.Equal(t, 0, met)
 
 	counter.Inc(10)
 	reporter.Report()
 
-	fmt.Printf("-> Deltas: %v\n", sender.Deltas)
-	fmt.Printf("-> Metrics: %v\n", sender.Metrics)
-	assert.Equal(t, 2, len(sender.Deltas))
-	assert.Equal(t, 0, len(sender.Metrics))
+	_, met, del = sender.Counters()
+	assert.Equal(t, 2, del)
+	assert.Equal(t, 0, met)
 
 	reporter.Close()
 }
 
 func newMockSender() *MockSender {
 	return &MockSender{
-		Distributions: make([]string, 0),
-		Metrics:       make([]string, 0),
-		Deltas:        make([]string, 0),
+		distributions: make([]string, 0),
+		metrics:       make([]string, 0),
+		deltas:        make([]string, 0),
 	}
 }
 
 type MockSender struct {
-	Distributions []string
-	Metrics       []string
-	Deltas        []string
+	distributions []string
+	metrics       []string
+	deltas        []string
+	sync.Mutex
 }
 
-func (s MockSender) Close() {}
+func (s *MockSender) Close() {}
 
-func (s MockSender) SendEvent(name string, startMillis, endMillis int64, source string, tags map[string]string) error {
+func (s *MockSender) SendEvent(name string, startMillis, endMillis int64, source string, tags map[string]string) error {
 	return nil
 }
 
-func (s MockSender) SendSpan(name string, startMillis, durationMillis int64, source, traceID, spanID string, parents, followsFrom []string, tags []senders.SpanTag, spanLogs []senders.SpanLog) error {
+func (s *MockSender) SendSpan(name string, startMillis, durationMillis int64, source, traceID, spanID string, parents, followsFrom []string, tags []senders.SpanTag, spanLogs []senders.SpanLog) error {
 	return nil
 }
 
 func (s *MockSender) SendDistribution(name string, centroids []histogram.Centroid, hgs map[histogram.Granularity]bool, ts int64, source string, tags map[string]string) error {
-	s.Distributions = append(s.Distributions, name)
+	s.Lock()
+	defer s.Unlock()
+	s.distributions = append(s.distributions, name)
 	return nil
 }
 
 func (s *MockSender) SendDeltaCounter(name string, value float64, source string, tags map[string]string) error {
-	s.Deltas = append(s.Deltas, name)
+	s.Lock()
+	defer s.Unlock()
+	s.deltas = append(s.deltas, name)
 	return nil
 }
 
@@ -196,16 +203,24 @@ func (s *MockSender) SendMetric(name string, value float64, ts int64, source str
 	if name == ".count" {
 		return fmt.Errorf("empty metric name")
 	}
-	s.Metrics = append(s.Metrics, name)
+	s.Lock()
+	defer s.Unlock()
+	s.metrics = append(s.metrics, name)
 	return nil
 }
 
-func (s MockSender) Flush() error {
+func (s *MockSender) Flush() error {
 	return nil
 }
 
-func (s MockSender) GetFailureCount() int64 {
+func (s *MockSender) GetFailureCount() int64 {
 	return 0
 }
 
-func (s MockSender) Start() {}
+func (s *MockSender) Start() {}
+
+func (s *MockSender) Counters() (int, int, int) {
+	s.Lock()
+	defer s.Unlock()
+	return len(s.distributions), len(s.metrics), len(s.deltas)
+}

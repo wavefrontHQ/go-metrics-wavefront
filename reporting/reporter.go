@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 // WavefrontMetricsReporter report go-metrics to wavefront
 type WavefrontMetricsReporter interface {
 	Start()
-	Stop()
 	Close()
 	Report()
 	ErrorsCount() int64
@@ -35,11 +35,12 @@ type reporter struct {
 	durationUnit time.Duration          // Time conversion unit for durations
 	metrics      map[string]interface{} // for Wavefron specific metrics tyoes, like Histograms
 	errors       chan error
+	start        chan bool
+	close        chan bool
 	errorsCount  int64
 	errorDebug   bool
-	close        chan bool
 	autoStart    bool
-	running      bool
+	mux          sync.Mutex
 }
 
 // Option allow WavefrontReporter customization
@@ -108,13 +109,15 @@ func NewReporter(sender wf.Sender, application application.Tags, setters ...Opti
 
 	r.ticker = time.NewTicker(r.interval)
 	r.close = make(chan bool, 1)
+	r.start = make(chan bool, 1)
 	r.errors = make(chan error)
 
 	go func() {
+		running := false
 		for {
 			select {
 			case <-r.ticker.C:
-				if r.running {
+				if running {
 					go r.Report()
 				}
 			case error := <-r.errors:
@@ -124,7 +127,11 @@ func NewReporter(sender wf.Sender, application application.Tags, setters ...Opti
 						log.Printf("reporter error: %v\n", error)
 					}
 				}
+			case <-r.start:
+				running = true
 			case <-r.close:
+				r.Report()
+				r.sender.Close()
 				return
 			}
 		}
@@ -142,6 +149,9 @@ func (r *reporter) ErrorsCount() int64 {
 }
 
 func (r *reporter) Report() {
+	r.mux.Lock()
+	r.mux.Unlock()
+
 	lastErrorsCount := r.ErrorsCount()
 	metrics.DefaultRegistry.Each(func(key string, metric interface{}) {
 		name, tags := DecodeKey(key)
@@ -252,16 +262,10 @@ func (r *reporter) prepareName(name string, suffix ...string) string {
 }
 
 func (r *reporter) Start() {
-	r.running = true
-}
-
-func (r *reporter) Stop() {
-	r.running = false
-	r.Report()
+	r.start <- true
 }
 
 func (r *reporter) Close() {
-	r.Report()
 	r.close <- true
 }
 
