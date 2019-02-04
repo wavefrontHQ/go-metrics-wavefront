@@ -115,7 +115,7 @@ func NewReporter(sender wf.Sender, application application.Tags, setters ...Opti
 			select {
 			case <-r.ticker.C:
 				if r.running {
-					r.Report()
+					go r.Report()
 				}
 			case error := <-r.errors:
 				if error != nil {
