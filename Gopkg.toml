@@ -4,8 +4,8 @@
 
 # TODO: change to wavefront-sdk-go version
 [[constraint]]
-  branch = "master"
   name = "github.com/wavefronthq/wavefront-sdk-go"
+  revision = "a656e9e78494b14d59cc8792796848e9c9267483"
 
 [prune]
   go-tests = true
