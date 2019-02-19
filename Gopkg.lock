@@ -42,7 +42,7 @@
   version = "v1.3.0"
 
 [[projects]]
-  digest = "1:37aac80decb5bbc1f825dcca865be0157e79464ac0ee74789c7e111bb632138b"
+  digest = "1:f8fa24dccae1fe5bb5e9dbd7adc11588cc6e0a2767576251318835bc4998f13d"
   name = "github.com/wavefronthq/wavefront-sdk-go"
   packages = [
     "application",
@@ -51,7 +51,8 @@
     "senders",
   ]
   pruneopts = "UT"
-  revision = "a656e9e78494b14d59cc8792796848e9c9267483"
+  revision = "fa87530cd02a8ad08bd179e1c39fb319a0cc0dae"
+  version = "v0.9.2"
 
 [solve-meta]
   analyzer-name = "dep"
