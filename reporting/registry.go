@@ -15,7 +15,7 @@ func (err RegistryError) Error() string {
 }
 
 // RegisterMetric tag support for metrics.Register()
-// return RegistryError if the mertrics is not registered
+// return RegistryError if the metric is not registered
 func RegisterMetric(name string, metric interface{}, tags map[string]string) error {
 	key := EncodeKey(name, tags)
 	err := metrics.Register(key, metric)

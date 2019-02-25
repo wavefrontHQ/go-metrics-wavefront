@@ -1,3 +1,4 @@
+// Package reporting provides functionality for reporting metrics to Wavefront.
 package reporting
 
 import (
@@ -17,9 +18,16 @@ import (
 
 // WavefrontMetricsReporter report go-metrics to wavefront
 type WavefrontMetricsReporter interface {
+	// Starts reporting metrics to Wavefront at a given interval.
 	Start()
+
+	// Stops reporting metrics and closes the reporter.
 	Close()
+
+	// Reports the metrics to Wavefront just once. Can be used to manually report metrics to Wavefront outside of Start.
 	Report()
+
+	// Gets the count of errors in reporting metrics to Wavefront.
 	ErrorsCount() int64
 }
 
@@ -43,7 +51,7 @@ type reporter struct {
 	mux          sync.Mutex
 }
 
-// Option allow WavefrontReporter customization
+// Option allows WavefrontReporter customization
 type Option func(*reporter)
 
 // LogErrors tag for metrics
@@ -81,7 +89,7 @@ func Prefix(prefix string) Option {
 	}
 }
 
-// AddSuffix add a metric suffix based on the metric type ('.count', '.value')
+// AddSuffix adds a metric suffix based on the metric type ('.count', '.value')
 func AddSuffix(addSuffix bool) Option {
 	return func(args *reporter) {
 		args.addSuffix = addSuffix

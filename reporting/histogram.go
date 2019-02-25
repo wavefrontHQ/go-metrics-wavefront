@@ -5,12 +5,12 @@ import (
 	"github.com/wavefronthq/wavefront-sdk-go/histogram"
 )
 
-// Histogram wrapper of WF Histogram so it can be used on metrics.Registry
+// Histogram wrapper of Wavefront Histogram so it can be used with metrics.Registry
 type Histogram struct {
 	delegate histogram.Histogram
 }
 
-// NewHistogram create a new WF Histogram and the wrapper
+// NewHistogram create a new Wavefront Histogram and the wrapper
 func NewHistogram(options ...histogram.Option) metrics.Histogram {
 	return Histogram{delegate: histogram.New(options...)}
 }
@@ -25,12 +25,12 @@ func (h Histogram) Count() int64 {
 	return int64(h.delegate.Count())
 }
 
-// Min returns the minimun Value of samples on this histogram.
+// Min returns the minimum Value of samples on this histogram.
 func (h Histogram) Min() int64 {
 	return int64(h.delegate.Min())
 }
 
-// Max returns the maximun Value of samples on this histogram.
+// Max returns the maximum Value of samples on this histogram.
 func (h Histogram) Max() int64 {
 	return int64(h.delegate.Max())
 }
@@ -92,7 +92,7 @@ func (h Histogram) Percentiles(ps []float64) []float64 {
 	return res
 }
 
-// Distributions returns all samples on comlepted time slices, and clear the histogram
+// Distributions returns all samples on completed time slices, and clear the histogram
 func (h Histogram) Distributions() []histogram.Distribution {
 	return h.delegate.Distributions()
 }
