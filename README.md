@@ -2,12 +2,7 @@
 
 This is a plugin for [go-metrics](https://github.com/rcrowley/go-metrics) which adds a Wavefront reporter and a simple abstraction that supports tagging at the host and metric level.
 
-## Usage
-
-### Wavefront Reporter
-
-The Wavefront Reporter supports tagging at the host level. Any tags passed to the reporter here will be applied to every metric before being sent to Wavefront.
-
+## Imports
 ```go
 import (
 	metrics "github.com/rcrowley/go-metrics"
@@ -15,20 +10,43 @@ import (
 	"github.com/wavefronthq/wavefront-sdk-go/application"
 	"github.com/wavefronthq/wavefront-sdk-go/senders"
 )
+```
 
+## Set Up a Wavefront Reporter
+This SDK provides a `WavefrontMetricsReporter` that allows you to:
+* Report metrics to Wavefront at regular intervals or
+* Manually report metrics to Wavefront
+
+The steps for creating a `WavefrontMetricsReporter` are:
+1. Create a Wavefront `Sender` for managing communication with Wavefront.
+2. Create a `WavefrontMetricsReporter`
+
+### 1. Set Up a Wavefront Sender
+A "Wavefront sender" is an object that implements the low-level interface for sending data to Wavefront. You can choose to send data using either the [Wavefront proxy](https://docs.wavefront.com/proxies.html) or [direct ingestion](https://docs.wavefront.com/direct_ingestion.html).
+
+* If you have already set up a Wavefront sender for another SDK that will run in the same process, use that one. (For details, see [Share a Wavefront Sender](https://github.com/wavefrontHQ/wavefront-sdk-go/blob/master/docs/sender.md#share-a-wavefront-sender).)
+* Otherwise, follow the steps in [Set Up a Wavefront Sender](https://github.com/wavefrontHQ/wavefront-sdk-go/blob/master/docs/sender.md) to configure a proxy `Sender` or a direct `Sender`.
+
+The following example configures a direct `Sender` with default direct ingestion properties:
+
+```go
 directCfg := &senders.DirectConfiguration{
-  Server:               "https://[INSTANCE].reporting.com",
-  Token:                [WF_TOKEN],
-  BatchSize:            10000,
-  MaxBufferSize:        50000,
-  FlushIntervalSeconds: 1,
+  Server:               "https://INSTANCE.wavefront.com",
+  Token:                "YOUR_API_TOKEN",
 }
 
 sender, err := senders.NewDirectSender(directCfg)
 if err != nil {
   panic(err)
 }
+```
 
+### 2. Create the WavefrontMetricsReporter
+The `WavefrontMetricsReporter` supports tagging at the host level. Any tags passed to the reporter here will be applied to every metric before being sent to Wavefront.
+
+To create the `WavefrontMetricsReporter` you initialize it with the `sender` instance you created in the previous step along with a few other properties:
+
+```go
 reporter := reporting.NewReporter(
   sender,
   application.New("app", "srv"),
@@ -38,25 +56,23 @@ reporter := reporting.NewReporter(
 )
 ```
 
-### Tagging Metrics
+## Tagging Metrics
 
-In addition to tagging at the application level, you can add tags to individual metrics.
+In addition to tagging at the reporter level, you can add tags to individual metrics:
 
 ```go
 tags := map[string]string{
-  "key2": "val2",
   "key1": "val1",
+  "key2": "val2",
 }
-counter := metrics.NewCounter()                //Create a counter
+counter := metrics.NewCounter() // Create a counter
 reporting.RegisterMetric("foo", counter, tags) // will create a 'some.prefix.foo.count' metric with tags
 counter.Inc(47)
 ```
 
-`reporting.RegisterMetric()` has the same affect as go-metrics' `metrics.Register()` except that it accepts tags in the form of a string map. The tags are then used by the Wavefront reporter at flush time. The tags become part of the key for a metric within go-metrics' Registry. Every unique combination of metric name+tags is a unique series. You can pass your tags in any order to the Register and Get functions documented below. The Wavefront plugin ensures the tags are always encoded in the same order within the Registry to ensure no duplication of metric series.
+**Note:** `reporting.RegisterMetric()` has the same affect as go-metrics' `metrics.Register()` except that it accepts tags in the form of a string map. The tags are then used by the Wavefront reporter at flush time. The tags become part of the key for a metric within the go-metrics' Registry. Every unique combination of metric name+tags is a unique series. You can pass your tags in any order to the Register and Get functions documented below. The Wavefront plugin ensures the tags are always encoded in the same order within the Registry to ensure no duplication of metric series.
 
-[Go Docs](https://github.com/wavefrontHQ/go-metrics-wavefront/blob/master/GODOCS.md)
-
-### Extended Code Example
+## Extended Code Example
 
 ```go
 package main
@@ -99,6 +115,7 @@ func main() {
 	reporting.RegisterMetric(reporting.DeltaCounterName("delta.metric"), deltaCounter, tags)
 	deltaCounter.Inc(10)
 
+  // Create a direct sender
 	directCfg := &senders.DirectConfiguration{
 		Server:               "https://" + os.Getenv("WF_INSTANCE") + ".reporting.com",
 		Token:                os.Getenv("WF_TOKEN"),
