@@ -2,8 +2,10 @@
 package reporting
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,6 +31,21 @@ type WavefrontMetricsReporter interface {
 
 	// Gets the count of errors in reporting metrics to Wavefront.
 	ErrorsCount() int64
+
+	// RegisterMetric register the given metric under the given name and tags
+	// return RegistryError if the metric is not registered
+	RegisterMetric(name string, metric interface{}, tags map[string]string) error
+
+	// GetMetric get the metric by the given name and tags or nil if none is registered.
+	GetMetric(name string, tags map[string]string) interface{}
+
+	// GetOrRegisterMetric gets an existing metric or registers the given one.
+	// The interface can be the metric to register if not found in registry,
+	// or a function returning the metric for lazy instantiation.
+	GetOrRegisterMetric(name string, i interface{}, tags map[string]string) interface{}
+
+	// UnregisterMetric Unregister the metric with the given name.
+	UnregisterMetric(name string, tags map[string]string)
 }
 
 type reporter struct {
@@ -49,6 +66,7 @@ type reporter struct {
 	errorDebug   bool
 	autoStart    bool
 	mux          sync.Mutex
+	registry     metrics.Registry
 }
 
 // Option allows WavefrontReporter customization
@@ -96,6 +114,8 @@ func AddSuffix(addSuffix bool) Option {
 	}
 }
 
+var isDefaultRegistryUsed bool
+
 // NewReporter create a WavefrontMetricsReporter
 func NewReporter(sender wf.Sender, application application.Tags, setters ...Option) WavefrontMetricsReporter {
 	r := &reporter{
@@ -113,6 +133,13 @@ func NewReporter(sender wf.Sender, application application.Tags, setters ...Opti
 
 	for _, setter := range setters {
 		setter(r)
+	}
+
+	if !isDefaultRegistryUsed {
+		r.registry = metrics.DefaultRegistry
+		isDefaultRegistryUsed = true
+	} else {
+		r.registry = metrics.NewRegistry()
 	}
 
 	r.ticker = time.NewTicker(r.interval)
@@ -161,7 +188,7 @@ func (r *reporter) Report() {
 	defer r.mux.Unlock()
 
 	lastErrorsCount := r.ErrorsCount()
-	metrics.DefaultRegistry.Each(func(key string, metric interface{}) {
+	r.registry.Each(func(key string, metric interface{}) {
 		name, tags := DecodeKey(key)
 		switch metric.(type) {
 		case metrics.Counter:
@@ -275,6 +302,48 @@ func (r *reporter) Start() {
 
 func (r *reporter) Close() {
 	r.close <- true
+}
+
+// RegistryError returned if there is any error on RegisterMetric
+type RegistryError string
+
+func (err RegistryError) Error() string {
+	return fmt.Sprintf("Registry Error: %s", string(err))
+}
+
+// RegisterMetric register the given metric under the given name and tags
+// return RegistryError if the metric is not registered
+func (r *reporter) RegisterMetric(name string, metric interface{}, tags map[string]string) error {
+	key := EncodeKey(name, tags)
+	err := r.registry.Register(key, metric)
+	if err != nil {
+		return err
+	}
+	m := r.GetMetric(name, tags)
+	if m == nil {
+		return RegistryError(fmt.Sprintf("Metric '%s'(%s) not registered.", name, reflect.TypeOf(metric).String()))
+	}
+	return nil
+}
+
+// GetMetric get the metric by the given name and tags or nil if none is registered.
+func (r *reporter) GetMetric(name string, tags map[string]string) interface{} {
+	key := EncodeKey(name, tags)
+	return r.registry.Get(key)
+}
+
+// GetOrRegisterMetric gets an existing metric or registers the given one.
+// The interface can be the metric to register if not found in registry,
+// or a function returning the metric for lazy instantiation.
+func (r *reporter) GetOrRegisterMetric(name string, i interface{}, tags map[string]string) interface{} {
+	key := EncodeKey(name, tags)
+	return r.registry.GetOrRegister(key, i)
+}
+
+// UnregisterMetric Unregister the metric with the given name.
+func (r *reporter) UnregisterMetric(name string, tags map[string]string) {
+	key := EncodeKey(name, tags)
+	r.registry.Unregister(key)
 }
 
 func hostname() string {
