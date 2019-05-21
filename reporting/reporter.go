@@ -93,7 +93,7 @@ func Interval(interval time.Duration) Option {
 	}
 }
 
-// DisableAutoStart prevent the Repotorte to start reporting when is cretaed.
+// DisableAutoStart prevents the Reporter from automatically reporting when created.
 func DisableAutoStart() Option {
 	return func(args *reporter) {
 		args.autoStart = false
@@ -114,7 +114,12 @@ func AddSuffix(addSuffix bool) Option {
 	}
 }
 
-var isDefaultRegistryUsed bool
+// CustomRegistry allows overriding the registry used by the reporter.
+func CustomRegistry(registry metrics.Registry) Option {
+	return func(args *reporter) {
+		args.registry = registry
+	}
+}
 
 // NewReporter create a WavefrontMetricsReporter
 func NewReporter(sender wf.Sender, application application.Tags, setters ...Option) WavefrontMetricsReporter {
@@ -135,11 +140,8 @@ func NewReporter(sender wf.Sender, application application.Tags, setters ...Opti
 		setter(r)
 	}
 
-	if !isDefaultRegistryUsed {
+	if r.registry == nil {
 		r.registry = metrics.DefaultRegistry
-		isDefaultRegistryUsed = true
-	} else {
-		r.registry = metrics.NewRegistry()
 	}
 
 	r.ticker = time.NewTicker(r.interval)
@@ -175,7 +177,6 @@ func NewReporter(sender wf.Sender, application application.Tags, setters ...Opti
 	if r.autoStart {
 		r.Start()
 	}
-
 	return r
 }
 
