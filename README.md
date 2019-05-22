@@ -1,4 +1,4 @@
-# go-metrics-wavefront [![GoDoc](https://godoc.org/github.com/wavefrontHQ/go-metrics-wavefront?status.svg)](https://godoc.org/github.com/wavefrontHQ/go-metrics-wavefront) [![travis build status](https://travis-ci.com/wavefrontHQ/go-metrics-wavefront.svg?branch=master)](https://travis-ci.com/wavefrontHQ/go-metrics-wavefront)
+# go-metrics-wavefront [![build status][ci-img]][ci] [![Go Report Card][go-report-img]][go-report] [![GoDoc][godoc-img]][godoc]
 
 This is a plugin for [go-metrics](https://github.com/rcrowley/go-metrics) which adds a Wavefront reporter and a simple abstraction that supports tagging at the host and metric level.
 
@@ -146,3 +146,10 @@ func main() {
 	}
 }
 ```
+
+[ci-img]: https://travis-ci.com/wavefrontHQ/go-metrics-wavefront.svg?branch=master
+[ci]: https://travis-ci.com/wavefrontHQ/go-metrics-wavefront
+[godoc]: https://godoc.org/github.com/wavefrontHQ/go-metrics-wavefront
+[godoc-img]: https://godoc.org/github.com/wavefrontHQ/go-metrics-wavefront?status.svg
+[go-report-img]: https://goreportcard.com/badge/github.com/wavefronthq/go-metrics-wavefront
+[go-report]: https://goreportcard.com/report/github.com/wavefronthq/go-metrics-wavefront
