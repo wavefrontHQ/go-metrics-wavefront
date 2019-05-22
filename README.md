@@ -66,11 +66,9 @@ tags := map[string]string{
   "key2": "val2",
 }
 counter := metrics.NewCounter() // Create a counter
-reporting.RegisterMetric("foo", counter, tags) // will create a 'some.prefix.foo.count' metric with tags
+reporter.RegisterMetric("foo", counter, tags) // will create a 'some.prefix.foo.count' metric with tags
 counter.Inc(47)
 ```
-
-**Note:** `reporting.RegisterMetric()` has the same affect as go-metrics' `metrics.Register()` except that it accepts tags in the form of a string map. The tags are then used by the Wavefront reporter at flush time. The tags become part of the key for a metric within the go-metrics' Registry. Every unique combination of metric name+tags is a unique series. You can pass your tags in any order to the Register and Get functions documented below. The Wavefront plugin ensures the tags are always encoded in the same order within the Registry to ensure no duplication of metric series.
 
 ## Extended Code Example
 
@@ -100,21 +98,6 @@ func main() {
 		"key3": "val3",
 	}
 
-	counter := metrics.NewCounter()                //Create a counter
-	metrics.Register("foo2", counter)              // will create a 'some.prefix.foo2.count' metric with no tags
-	reporting.RegisterMetric("foo", counter, tags) // will create a 'some.prefix.foo.count' metric with tags
-	counter.Inc(47)
-
-	histogram := reporting.NewHistogram()
-	reporting.RegisterMetric("duration", histogram, tags) // will create a 'some.prefix.duration' histogram metric with tags
-
-	histogram2 := reporting.NewHistogram()
-	metrics.Register("duration2", histogram2) // will create a 'some.prefix.duration2' histogram metric with no tags
-
-	deltaCounter := metrics.NewCounter()
-	reporting.RegisterMetric(reporting.DeltaCounterName("delta.metric"), deltaCounter, tags)
-	deltaCounter.Inc(10)
-
   // Create a direct sender
 	directCfg := &senders.DirectConfiguration{
 		Server:               "https://" + os.Getenv("WF_INSTANCE") + ".reporting.com",
@@ -136,6 +119,20 @@ func main() {
 		reporting.Prefix("some.prefix"),
 		reporting.LogErrors(true),
 	)
+
+	counter := metrics.NewCounter()                //Create a counter
+	reporter.RegisterMetric("foo", counter, tags)  // will create a 'some.prefix.foo.count' metric with tags
+	counter.Inc(47)
+
+	histogram := reporting.NewHistogram()
+	reporter.RegisterMetric("duration", histogram, tags) // will create a 'some.prefix.duration' histogram metric with tags
+
+	histogram2 := reporting.NewHistogram()
+	reporter.Register("duration2", histogram2) // will create a 'some.prefix.duration2' histogram metric with no tags
+
+	deltaCounter := metrics.NewCounter()
+	reporter.RegisterMetric(reporting.DeltaCounterName("delta.metric"), deltaCounter, tags)
+	deltaCounter.Inc(10)
 
 	fmt.Println("Search wavefront: ts(\"some.prefix.foo.count\")")
 	fmt.Println("Entering loop to simulate metrics flushing. Hit ctrl+c to cancel")

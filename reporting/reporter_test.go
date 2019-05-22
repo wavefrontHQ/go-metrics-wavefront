@@ -33,16 +33,14 @@ func TestPrefixAndSuffix(t *testing.T) {
 }
 
 func TestError(t *testing.T) {
-	metrics.DefaultRegistry.UnregisterAll()
-
 	sender := &MockSender{}
 	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(), LogErrors(true))
 	tags := map[string]string{"tag1": "tag"}
 
-	RegisterMetric("", metrics.NewCounter(), tags)
+	reporter.GetOrRegisterMetric("", metrics.NewCounter(), tags)
 
 	c := metrics.NewCounter()
-	RegisterMetric("m1", c, tags)
+	reporter.RegisterMetric("m1", c, tags)
 	c.Inc(1)
 
 	reporter.Report()
@@ -56,17 +54,15 @@ func TestError(t *testing.T) {
 }
 
 func TestBasicCounter(t *testing.T) {
-	metrics.DefaultRegistry.UnregisterAll()
-
 	sender := &MockSender{}
 	reporter := NewReporter(sender, application.New("app", "srv"), Interval(time.Second), LogErrors(true))
 	tags := map[string]string{"tag1": "tag"}
 
 	name := "counter"
-	c := GetMetric(name, tags)
+	c := reporter.GetMetric(name, tags)
 	if c == nil {
 		c = metrics.NewCounter()
-		RegisterMetric(name, c, tags)
+		reporter.RegisterMetric(name, c, tags)
 	}
 	c.(metrics.Counter).Inc(1)
 
@@ -84,15 +80,13 @@ func TestWFHistogram(t *testing.T) {
 		t.Skip("skipping Histogram tests in short mode")
 	}
 
-	metrics.DefaultRegistry.UnregisterAll()
-
 	sender := newMockSender()
 	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(), LogErrors(true))
 	tags := map[string]string{"tag1": "tag"}
 
 	h := NewHistogram(histogram.GranularityOption(histogram.MINUTE))
 	// h := NewHistogram()
-	RegisterMetric("wf.histogram", h, tags)
+	reporter.RegisterMetric("wf.histogram", h, tags)
 
 	for i := 0; i < 1000; i++ {
 		h.Update(rand.Int63())
@@ -110,15 +104,13 @@ func TestWFHistogram(t *testing.T) {
 }
 
 func TestHistogram(t *testing.T) {
-	metrics.DefaultRegistry.UnregisterAll()
-
 	sender := newMockSender()
 	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(), LogErrors(true))
 	tags := map[string]string{"tag1": "tag"}
 
 	s := metrics.NewExpDecaySample(1028, 0.015) // or metrics.NewUniformSample(1028)
 	h := metrics.NewHistogram(s)
-	RegisterMetric("mt.histogram", h, tags)
+	reporter.RegisterMetric("mt.histogram", h, tags)
 
 	for i := 0; i < 1000; i++ {
 		h.Update(rand.Int63())
@@ -135,14 +127,12 @@ func TestHistogram(t *testing.T) {
 }
 
 func TestDeltaPoint(t *testing.T) {
-	metrics.DefaultRegistry.UnregisterAll()
-
 	sender := newMockSender()
 	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(), LogErrors(true))
 	tags := map[string]string{"tag1": "tag"}
 
 	counter := metrics.NewCounter()
-	RegisterMetric(DeltaCounterName("foo"), counter, tags)
+	reporter.RegisterMetric(DeltaCounterName("foo"), counter, tags)
 
 	counter.Inc(10)
 	reporter.Report()
