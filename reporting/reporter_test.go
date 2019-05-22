@@ -2,17 +2,15 @@ package reporting
 
 import (
 	"fmt"
+	"github.com/rcrowley/go-metrics"
+	"github.com/stretchr/testify/assert"
+	"github.com/wavefronthq/wavefront-sdk-go/application"
+	"github.com/wavefronthq/wavefront-sdk-go/histogram"
+	"github.com/wavefronthq/wavefront-sdk-go/senders"
 	"math/rand"
 	"sync"
 	"testing"
 	"time"
-
-	metrics "github.com/rcrowley/go-metrics"
-	"github.com/wavefronthq/wavefront-sdk-go/application"
-	"github.com/wavefronthq/wavefront-sdk-go/histogram"
-	"github.com/wavefronthq/wavefront-sdk-go/senders"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestPrefixAndSuffix(t *testing.T) {
@@ -34,7 +32,8 @@ func TestPrefixAndSuffix(t *testing.T) {
 
 func TestError(t *testing.T) {
 	sender := &MockSender{}
-	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(), LogErrors(true))
+	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(),
+		LogErrors(true), CustomRegistry(metrics.NewRegistry()))
 	tags := map[string]string{"tag1": "tag"}
 
 	reporter.GetOrRegisterMetric("", metrics.NewCounter(), tags)
@@ -50,12 +49,12 @@ func TestError(t *testing.T) {
 
 	assert.Equal(t, 1, met)
 	assert.Equal(t, int64(1), reporter.ErrorsCount())
-
 }
 
 func TestBasicCounter(t *testing.T) {
 	sender := &MockSender{}
-	reporter := NewReporter(sender, application.New("app", "srv"), Interval(time.Second), LogErrors(true))
+	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(),
+		LogErrors(true), CustomRegistry(metrics.NewRegistry()))
 	tags := map[string]string{"tag1": "tag"}
 
 	name := "counter"
@@ -66,13 +65,13 @@ func TestBasicCounter(t *testing.T) {
 	}
 	c.(metrics.Counter).Inc(1)
 
-	time.Sleep(time.Second * 3) // wait  3 reporting interval
-
+	for i := 0; i < 3; i++ {
+		reporter.Report()
+	}
 	reporter.Close()
 
 	_, met, _ := sender.Counters()
 	assert.True(t, met >= 2)
-
 }
 
 func TestWFHistogram(t *testing.T) {
@@ -81,7 +80,8 @@ func TestWFHistogram(t *testing.T) {
 	}
 
 	sender := newMockSender()
-	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(), LogErrors(true))
+	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(),
+		LogErrors(true), CustomRegistry(metrics.NewRegistry()))
 	tags := map[string]string{"tag1": "tag"}
 
 	h := NewHistogram(histogram.GranularityOption(histogram.MINUTE))
@@ -105,7 +105,8 @@ func TestWFHistogram(t *testing.T) {
 
 func TestHistogram(t *testing.T) {
 	sender := newMockSender()
-	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(), LogErrors(true))
+	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(),
+		LogErrors(true), CustomRegistry(metrics.NewRegistry()))
 	tags := map[string]string{"tag1": "tag"}
 
 	s := metrics.NewExpDecaySample(1028, 0.015) // or metrics.NewUniformSample(1028)
@@ -117,7 +118,6 @@ func TestHistogram(t *testing.T) {
 	}
 
 	reporter.Report()
-
 	dis, met, _ := sender.Counters()
 
 	assert.Equal(t, 0, dis)
@@ -128,7 +128,8 @@ func TestHistogram(t *testing.T) {
 
 func TestDeltaPoint(t *testing.T) {
 	sender := newMockSender()
-	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(), LogErrors(true))
+	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(),
+		LogErrors(true), CustomRegistry(metrics.NewRegistry()))
 	tags := map[string]string{"tag1": "tag"}
 
 	counter := metrics.NewCounter()
