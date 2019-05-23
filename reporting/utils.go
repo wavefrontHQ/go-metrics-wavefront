@@ -8,6 +8,10 @@ import (
 
 // EncodeKey encodes the metric name and tags into a unique key.
 func EncodeKey(key string, tags map[string]string) string {
+	if len(tags) == 0 {
+		return url.QueryEscape(key)
+	}
+
 	//sort the tags to ensure the key is always the same when getting or setting
 	sortedKeys := make([]string, len(tags))
 	i := 0
