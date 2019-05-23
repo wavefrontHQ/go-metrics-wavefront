@@ -2,15 +2,16 @@ package reporting
 
 import (
 	"fmt"
-	"github.com/rcrowley/go-metrics"
-	"github.com/stretchr/testify/assert"
-	"github.com/wavefronthq/wavefront-sdk-go/application"
-	"github.com/wavefronthq/wavefront-sdk-go/histogram"
-	"github.com/wavefronthq/wavefront-sdk-go/senders"
 	"math/rand"
 	"sync"
 	"testing"
 	"time"
+
+	metrics "github.com/rcrowley/go-metrics"
+	"github.com/stretchr/testify/assert"
+	"github.com/wavefronthq/wavefront-sdk-go/application"
+	"github.com/wavefronthq/wavefront-sdk-go/histogram"
+	"github.com/wavefronthq/wavefront-sdk-go/senders"
 )
 
 func TestPrefixAndSuffix(t *testing.T) {
@@ -30,6 +31,32 @@ func TestPrefixAndSuffix(t *testing.T) {
 	assert.Equal(t, name, "name")
 }
 
+func TestTags(t *testing.T) {
+	sender := &MockSender{}
+	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(),
+		LogErrors(true), CustomRegistry(metrics.NewRegistry()))
+
+	reporter.GetOrRegisterMetric("m1", metrics.NewCounter(), map[string]string{"tag1": "tag"})
+	reporter.GetOrRegisterMetric("m2", metrics.NewCounter(), map[string]string{"application": "tag"})
+
+	reporter.Report()
+	reporter.Close()
+
+	assert.Equal(t, 2, len(sender.Metrics))
+	for _, metric := range sender.Metrics {
+		switch metric.Name {
+		case "m1.count":
+			assert.Equal(t, 5, len(metric.Tags))
+			assert.Equal(t, "app", metric.Tags["application"], "metrics tags: %v", metric.Tags)
+		case "m2.count":
+			assert.Equal(t, 4, len(metric.Tags))
+			assert.Equal(t, "tag", metric.Tags["application"], "metrics tags: %v", metric.Tags)
+		default:
+			t.Errorf("unexpected metric: '%v'", metric)
+		}
+	}
+}
+
 func TestError(t *testing.T) {
 	sender := &MockSender{}
 	reporter := NewReporter(sender, application.New("app", "srv"), DisableAutoStart(),
@@ -44,11 +71,12 @@ func TestError(t *testing.T) {
 
 	reporter.Report()
 	reporter.Close()
+	time.Sleep(time.Second * 2)
 
 	_, met, _ := sender.Counters()
 
 	assert.Equal(t, 1, met)
-	assert.Equal(t, int64(1), reporter.ErrorsCount())
+	assert.NotEqual(t, int64(0), reporter.ErrorsCount(), "error count")
 }
 
 func TestBasicCounter(t *testing.T) {
@@ -153,16 +181,21 @@ func TestDeltaPoint(t *testing.T) {
 
 func newMockSender() *MockSender {
 	return &MockSender{
-		distributions: make([]string, 0),
-		metrics:       make([]string, 0),
-		deltas:        make([]string, 0),
+		Distributions: make([]MockMetirc, 0),
+		Metrics:       make([]MockMetirc, 0),
+		Deltas:        make([]MockMetirc, 0),
 	}
 }
 
+type MockMetirc struct {
+	Name string
+	Tags map[string]string
+}
+
 type MockSender struct {
-	distributions []string
-	metrics       []string
-	deltas        []string
+	Distributions []MockMetirc
+	Metrics       []MockMetirc
+	Deltas        []MockMetirc
 	sync.Mutex
 }
 
@@ -179,14 +212,14 @@ func (s *MockSender) SendSpan(name string, startMillis, durationMillis int64, so
 func (s *MockSender) SendDistribution(name string, centroids []histogram.Centroid, hgs map[histogram.Granularity]bool, ts int64, source string, tags map[string]string) error {
 	s.Lock()
 	defer s.Unlock()
-	s.distributions = append(s.distributions, name)
+	s.Distributions = append(s.Distributions, MockMetirc{Name: name, Tags: tags})
 	return nil
 }
 
 func (s *MockSender) SendDeltaCounter(name string, value float64, source string, tags map[string]string) error {
 	s.Lock()
 	defer s.Unlock()
-	s.deltas = append(s.deltas, name)
+	s.Deltas = append(s.Deltas, MockMetirc{Name: name, Tags: tags})
 	return nil
 }
 
@@ -196,7 +229,7 @@ func (s *MockSender) SendMetric(name string, value float64, ts int64, source str
 	}
 	s.Lock()
 	defer s.Unlock()
-	s.metrics = append(s.metrics, name)
+	s.Metrics = append(s.Metrics, MockMetirc{Name: name, Tags: tags})
 	return nil
 }
 
@@ -213,5 +246,5 @@ func (s *MockSender) Start() {}
 func (s *MockSender) Counters() (int, int, int) {
 	s.Lock()
 	defer s.Unlock()
-	return len(s.distributions), len(s.metrics), len(s.deltas)
+	return len(s.Distributions), len(s.Metrics), len(s.Deltas)
 }

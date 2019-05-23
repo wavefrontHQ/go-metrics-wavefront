@@ -191,6 +191,13 @@ func (r *reporter) Report() {
 	lastErrorsCount := r.ErrorsCount()
 	r.registry.Each(func(key string, metric interface{}) {
 		name, tags := DecodeKey(key)
+
+		for t, v := range r.application.Map() {
+			if _, ok := tags[t]; !ok {
+				tags[t] = v
+			}
+		}
+
 		switch metric.(type) {
 		case metrics.Counter:
 			if hasDeltaPrefix(name) {
