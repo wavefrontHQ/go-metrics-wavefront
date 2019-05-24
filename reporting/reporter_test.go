@@ -40,7 +40,6 @@ func TestTags(t *testing.T) {
 	reporter.GetOrRegisterMetric("m2", metrics.NewCounter(), map[string]string{"application": "tag"})
 
 	reporter.Report()
-	reporter.Close()
 
 	assert.Equal(t, 2, len(sender.Metrics))
 	for _, metric := range sender.Metrics {
@@ -55,6 +54,8 @@ func TestTags(t *testing.T) {
 			t.Errorf("unexpected metric: '%v'", metric)
 		}
 	}
+
+	reporter.Close()
 }
 
 func TestError(t *testing.T) {
@@ -70,13 +71,14 @@ func TestError(t *testing.T) {
 	c.Inc(1)
 
 	reporter.Report()
-	reporter.Close()
 	time.Sleep(time.Second * 2)
 
 	_, met, _ := sender.Counters()
 
 	assert.NotEqual(t, 0, met, "error count, metrics: %v", sender.Metrics)
 	assert.NotEqual(t, int64(0), reporter.ErrorsCount(), "error count")
+
+	reporter.Close()
 }
 
 func TestBasicCounter(t *testing.T) {
@@ -96,10 +98,11 @@ func TestBasicCounter(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		reporter.Report()
 	}
-	reporter.Close()
 
 	_, met, _ := sender.Counters()
 	assert.True(t, met >= 2)
+
+	reporter.Close()
 }
 
 func TestWFHistogram(t *testing.T) {
