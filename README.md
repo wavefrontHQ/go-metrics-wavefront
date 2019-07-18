@@ -147,6 +147,25 @@ func main() {
 }
 ```
 
+## Golang Runtime Metrics
+
+To enable golang runtime metrics reporting, set the RuntimeMetric flag in reporter to true:
+
+```go
+	reporting.NewReporter(
+		sender,
+		application.New("app", "srv"),
+		reporting.Source("go-metrics-test"),
+		reporting.Prefix("some.prefix"),
+		reporting.RuntimeMetric(true),
+	)
+}
+counter := metrics.NewCounter() // Create a counter
+reporter.RegisterMetric("foo", counter, tags) // will create a 'some.prefix.foo.count' metric with tags
+counter.Inc(47)
+```
+
+
 [ci-img]: https://travis-ci.com/wavefrontHQ/go-metrics-wavefront.svg?branch=master
 [ci]: https://travis-ci.com/wavefrontHQ/go-metrics-wavefront
 [godoc]: https://godoc.org/github.com/wavefrontHQ/go-metrics-wavefront
