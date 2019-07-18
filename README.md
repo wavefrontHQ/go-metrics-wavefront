@@ -160,9 +160,7 @@ To enable golang runtime metrics reporting, set the RuntimeMetric flag in report
 		reporting.RuntimeMetric(true),
 	)
 }
-counter := metrics.NewCounter() // Create a counter
-reporter.RegisterMetric("foo", counter, tags) // will create a 'some.prefix.foo.count' metric with tags
-counter.Inc(47)
+
 ```
 
 
