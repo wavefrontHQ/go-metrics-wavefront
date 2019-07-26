@@ -49,24 +49,25 @@ type WavefrontMetricsReporter interface {
 }
 
 type reporter struct {
-	sender       wf.Sender
-	application  application.Tags
-	source       string
-	prefix       string
-	addSuffix    bool
-	interval     time.Duration
-	ticker       *time.Ticker
-	percentiles  []float64              // Percentiles to export from timers and histograms
-	durationUnit time.Duration          // Time conversion unit for durations
-	metrics      map[string]interface{} // for Wavefron specific metrics tyoes, like Histograms
-	errors       chan error
-	start        chan bool
-	close        chan bool
-	errorsCount  int64
-	errorDebug   bool
-	autoStart    bool
-	mux          sync.Mutex
-	registry     metrics.Registry
+	sender        wf.Sender
+	application   application.Tags
+	source        string
+	prefix        string
+	addSuffix     bool
+	interval      time.Duration
+	ticker        *time.Ticker
+	percentiles   []float64              // Percentiles to export from timers and histograms
+	durationUnit  time.Duration          // Time conversion unit for durations
+	metrics       map[string]interface{} // for Wavefron specific metrics tyoes, like Histograms
+	errors        chan error
+	start         chan bool
+	close         chan bool
+	errorsCount   int64
+	errorDebug    bool
+	autoStart     bool
+	mux           sync.Mutex
+	registry      metrics.Registry
+	runtimeMetric bool // for getting the go runtime metrics
 }
 
 // Option allows WavefrontReporter customization
@@ -121,19 +122,27 @@ func CustomRegistry(registry metrics.Registry) Option {
 	}
 }
 
+// Enable Runtime Metric collection
+func RuntimeMetric(enable bool) Option {
+	return func(args *reporter) {
+		args.runtimeMetric = enable
+	}
+}
+
 // NewReporter create a WavefrontMetricsReporter
 func NewReporter(sender wf.Sender, application application.Tags, setters ...Option) WavefrontMetricsReporter {
 	r := &reporter{
-		sender:       sender,
-		application:  application,
-		source:       hostname(),
-		interval:     time.Second * 5,
-		percentiles:  []float64{0.5, 0.75, 0.95, 0.99, 0.999},
-		durationUnit: time.Nanosecond,
-		metrics:      make(map[string]interface{}),
-		addSuffix:    true,
-		errorsCount:  0,
-		autoStart:    true,
+		sender:        sender,
+		application:   application,
+		source:        hostname(),
+		interval:      time.Second * 5,
+		percentiles:   []float64{0.5, 0.75, 0.95, 0.99, 0.999},
+		durationUnit:  time.Nanosecond,
+		metrics:       make(map[string]interface{}),
+		addSuffix:     true,
+		errorsCount:   0,
+		autoStart:     true,
+		runtimeMetric: false,
 	}
 
 	for _, setter := range setters {
@@ -142,6 +151,10 @@ func NewReporter(sender wf.Sender, application application.Tags, setters ...Opti
 
 	if r.registry == nil {
 		r.registry = metrics.DefaultRegistry
+	}
+
+	if r.runtimeMetric == true {
+		metrics.RegisterRuntimeMemStats(r.registry)
 	}
 
 	r.ticker = time.NewTicker(r.interval)
@@ -189,6 +202,11 @@ func (r *reporter) Report() {
 	defer r.mux.Unlock()
 
 	lastErrorsCount := r.ErrorsCount()
+
+	if r.runtimeMetric == true {
+		metrics.CaptureRuntimeMemStatsOnce(r.registry)
+	}
+
 	r.registry.Each(func(key string, metric interface{}) {
 		name, tags := DecodeKey(key)
 

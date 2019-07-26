@@ -147,6 +147,23 @@ func main() {
 }
 ```
 
+## Golang Runtime Metrics
+
+To enable golang runtime metrics reporting, set the RuntimeMetric flag in reporter to true:
+
+```go
+	reporting.NewReporter(
+		sender,
+		application.New("app", "srv"),
+		reporting.Source("go-metrics-test"),
+		reporting.Prefix("some.prefix"),
+		reporting.RuntimeMetric(true),
+	)
+}
+
+```
+
+
 [ci-img]: https://travis-ci.com/wavefrontHQ/go-metrics-wavefront.svg?branch=master
 [ci]: https://travis-ci.com/wavefrontHQ/go-metrics-wavefront
 [godoc]: https://godoc.org/github.com/wavefrontHQ/go-metrics-wavefront

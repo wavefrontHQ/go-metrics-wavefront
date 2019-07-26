@@ -51,6 +51,28 @@ func main() {
 		panic(err)
 	}
 
+	// start: send golang runtime metric
+	rtm_counter := metrics.NewCounter()            //Create a counter
+	metrics.Register("golangruntime", rtm_counter) // will create a 'some.prefix.golangruntime.count' metric with no tags
+
+	report_rtm := reporting.NewReporter(
+		sender,
+		application.New("app", "srv"),
+		reporting.Source("go-metrics-test"),
+		reporting.Prefix("some.prefix"),
+		reporting.RuntimeMetric(true),
+	)
+
+	report_rtm.RegisterMetric("golangruntime", rtm_counter, tags) // will create a 'some.prefix.golangruntime.count' metric with tags
+
+	fmt.Println("Search wavefront: ts(\"some.prefix.golangruntime.count\")")
+	fmt.Println("Entering loop to simulate metrics flushing. Hit ctrl+c to cancel")
+
+	for i := 0; i <= 1000; i++ {
+		time.Sleep(time.Second * 10)
+	}
+	// end: send golang runtime metric
+
 	reporting.NewReporter(
 		sender,
 		application.New("app", "srv"),
