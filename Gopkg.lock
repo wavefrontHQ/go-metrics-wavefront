@@ -26,12 +26,11 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:d38f81081a389f1466ec98192cf9115a82158854d6f01e1c23e2e7554b97db71"
+  digest = "1:267844804416a11470a2fbf68549b98959e22d77e0921e2349276958477f08a3"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
   pruneopts = "UT"
-  revision = "3113b8401b8a98917cde58f8bbd42a1b1c03b1fd"
+  revision = "9beb055b7962d16947a14e1cd718098a2431e20e"
 
 [[projects]]
   digest = "1:972c2427413d41a1e06ca4897e8528e5a1622894050e2f527b38ddf0f343f759"
