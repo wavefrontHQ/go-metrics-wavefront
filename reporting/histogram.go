@@ -57,7 +57,14 @@ func (h Histogram) Sample() metrics.Sample {
 
 // Snapshot create a metrics.Histogram
 func (h Histogram) Snapshot() metrics.Histogram {
-	sample := metrics.NewUniformSample(int(h.Count()))
+	c := 0
+	for _, distribution := range h.delegate.Snapshot() {
+		for _, centroid := range distribution.Centroids {
+			c += centroid.Count
+		}
+	}
+
+	sample := metrics.NewUniformSample(c)
 	for _, distribution := range h.delegate.Snapshot() {
 		for _, centroid := range distribution.Centroids {
 			for i := 0; i < centroid.Count; i++ {
