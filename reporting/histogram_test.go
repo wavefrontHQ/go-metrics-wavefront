@@ -1,12 +1,90 @@
 package reporting
 
 import (
+	"math"
 	"testing"
 	"time"
 
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stretchr/testify/assert"
 )
+
+var pow10, inc100, inc1000, emptyHistogram = NewHistogram(), NewHistogram(), NewHistogram(), NewHistogram()
+
+func createPow10Histogram() {
+	pow10_ := [9]int64{0,1,10,10,100,1000,10000,10000,100000}
+	for _, num := range pow10_ {
+		pow10.Update(num)
+	}
+}
+
+func setup() {
+	createPow10Histogram()
+	for i := 1; i <= 100; i++ {
+		inc100.Update(int64(i))
+	}
+	for i:= 1; i <= 1000; i++ {
+		inc1000.Update(int64(i))
+	}
+	time.Sleep(1 * time.Minute) //flush to priorTimedBin
+}
+
+func TestEverything(t *testing.T) {
+	setup()
+	TestHistogram_Count(t)
+	TestHistogram_Max(t)
+	TestHistogram_Min(t)
+	TestHistogram_Mean(t)
+	TestHistogram_Sum(t)
+	TestHistogram_StdDev(t)
+	TestHistogram_Percentiles(t)
+	//TestWFHistogramAPI(t)
+}
+
+func TestHistogram_Count(t *testing.T) {
+	assert.Equal(t, int64(9), pow10.Count())
+	assert.Equal(t, int64(9), pow10.Snapshot().Count())
+	assert.Equal(t, int64(0), emptyHistogram.Count())
+}
+
+func TestHistogram_Max(t *testing.T) {
+	assert.Equal(t, int64(100000), pow10.Max())
+	assert.Equal(t, int64(100000), pow10.Snapshot().Max())
+	assert.Equal(t, int64(math.NaN()), emptyHistogram.Max())
+}
+
+func TestHistogram_Min(t *testing.T) {
+	assert.Equal(t, int64(1), inc100.Min())
+	assert.Equal(t, int64(1), inc100.Snapshot().Min())
+	assert.Equal(t, int64(math.NaN()), emptyHistogram.Min())
+}
+
+func TestHistogram_Mean(t *testing.T) {
+	assert.Equal(t, float64(13457.888888888889), pow10.Mean())
+	assert.Equal(t, float64(13457.888888888889), pow10.Snapshot().Mean())
+	assert.True(t, math.IsNaN(emptyHistogram.Mean()))
+}
+
+func TestHistogram_Sum(t *testing.T) {
+	assert.Equal(t, int64(121121), pow10.Sum())
+	assert.Equal(t, int64(121121), pow10.Snapshot().Sum())
+	assert.Equal(t, int64(0), emptyHistogram.Sum())
+}
+
+func TestHistogram_StdDev(t *testing.T) {
+	stddev := pow10.StdDev()
+	assert.Equal(t, float64(30859.857493890177), stddev)
+	assert.Equal(t, float64(0), emptyHistogram.StdDev())
+}
+
+func TestHistogram_Percentiles(t *testing.T) {
+	snapshot := inc100.Snapshot()
+	assert.Equal(t, 25.25, snapshot.Percentile(0.25))
+	assert.Equal(t, 75.75, snapshot.Percentile(0.75))
+	assert.Equal(t, 98.98, snapshot.Percentile(0.98))
+	assert.Equal(t, 99.99, snapshot.Percentile(0.99))
+	assert.Equal(t, 999.999, inc1000.Snapshot().Percentile(0.999))
+}
 
 func TestWFHistogramAPI(t *testing.T) {
 	h := NewHistogram()
@@ -24,25 +102,4 @@ func TestWFHistogramAPI(t *testing.T) {
 	default:
 		t.Fatalf("the histogram is not 'histogram.Histogram'")
 	}
-}
-
-var pow10 = NewHistogram()
-
-func setup() {
-	pow10.Update(0)
-	pow10.Update(1)
-	pow10.Update(10)
-	pow10.Update(10)
-	pow10.Update(100)
-	pow10.Update(1000)
-	pow10.Update(10000)
-	pow10.Update(10000)
-	pow10.Update(100000)
-}
-
-func TestHistogram_StdDev(t *testing.T) {
-	setup()
-	time.Sleep(1 * time.Minute) //flush to priorTimedBin
-	stddev := pow10.StdDev()
-	assert.Equal(t, float64(30859.857493890177), stddev)
 }
