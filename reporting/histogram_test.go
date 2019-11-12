@@ -12,7 +12,7 @@ import (
 var pow10, inc100, inc1000, emptyHistogram = NewHistogram(), NewHistogram(), NewHistogram(), NewHistogram()
 
 func createPow10Histogram() {
-	pow10_ := [9]int64{0,1,10,10,100,1000,10000,10000,100000}
+	pow10_ := [9]int64{0, 1, 10, 10, 100, 1000, 10000, 10000, 100000}
 	for _, num := range pow10_ {
 		pow10.Update(num)
 	}
@@ -23,7 +23,7 @@ func setup() {
 	for i := 1; i <= 100; i++ {
 		inc100.Update(int64(i))
 	}
-	for i:= 1; i <= 1000; i++ {
+	for i := 1; i <= 1000; i++ {
 		inc1000.Update(int64(i))
 	}
 	time.Sleep(1 * time.Minute) //flush to priorTimedBin
