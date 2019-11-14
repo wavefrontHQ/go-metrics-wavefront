@@ -29,55 +29,33 @@ func setup() {
 	time.Sleep(1 * time.Minute) //flush to priorTimedBin
 }
 
-func TestEverything(t *testing.T) {
+func TestHistogramCal(t *testing.T) {
 	setup()
-	TestHistogram_Count(t)
-	TestHistogram_Max(t)
-	TestHistogram_Min(t)
-	TestHistogram_Mean(t)
-	TestHistogram_Sum(t)
-	TestHistogram_StdDev(t)
-	TestHistogram_Percentiles(t)
-	//TestWFHistogramAPI(t)
-}
-
-func TestHistogram_Count(t *testing.T) {
+	//Count
 	assert.Equal(t, int64(9), pow10.Count())
 	assert.Equal(t, int64(9), pow10.Snapshot().Count())
 	assert.Equal(t, int64(0), emptyHistogram.Count())
-}
-
-func TestHistogram_Max(t *testing.T) {
+	//Max
 	assert.Equal(t, int64(100000), pow10.Max())
 	assert.Equal(t, int64(100000), pow10.Snapshot().Max())
 	assert.Equal(t, int64(math.NaN()), emptyHistogram.Max())
-}
-
-func TestHistogram_Min(t *testing.T) {
+	//Min
 	assert.Equal(t, int64(1), inc100.Min())
 	assert.Equal(t, int64(1), inc100.Snapshot().Min())
 	assert.Equal(t, int64(math.NaN()), emptyHistogram.Min())
-}
-
-func TestHistogram_Mean(t *testing.T) {
+	//Mean
 	assert.Equal(t, float64(13457.888888888889), pow10.Mean())
 	assert.Equal(t, float64(13457.888888888889), pow10.Snapshot().Mean())
 	assert.True(t, math.IsNaN(emptyHistogram.Mean()))
-}
-
-func TestHistogram_Sum(t *testing.T) {
+	//Sum
 	assert.Equal(t, int64(121121), pow10.Sum())
 	assert.Equal(t, int64(121121), pow10.Snapshot().Sum())
 	assert.Equal(t, int64(0), emptyHistogram.Sum())
-}
-
-func TestHistogram_StdDev(t *testing.T) {
+	//StdDev
 	stddev := pow10.StdDev()
 	assert.Equal(t, float64(30859.857493890177), stddev)
 	assert.Equal(t, float64(0), emptyHistogram.StdDev())
-}
-
-func TestHistogram_Percentiles(t *testing.T) {
+	//Percentiles
 	snapshot := inc100.Snapshot()
 	assert.Equal(t, 25.25, snapshot.Percentile(0.25))
 	assert.Equal(t, 75.75, snapshot.Percentile(0.75))
