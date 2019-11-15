@@ -4,7 +4,7 @@
 
 [[constraint]]
   name = "github.com/wavefronthq/wavefront-sdk-go"
-  revision = "caaaf9d78ce10981d43bc7097a045db178afd831"
+  revision = "3efe8a103d9f8f22e557916c23fc8825cf3309c2"
 
 [prune]
   go-tests = true
