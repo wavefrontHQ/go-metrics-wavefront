@@ -2,6 +2,7 @@ package reporting
 
 import (
 	"fmt"
+	"github.com/wavefronthq/wavefront-sdk-go/event"
 	"math/rand"
 	"sync"
 	"testing"
@@ -204,7 +205,7 @@ type MockSender struct {
 
 func (s *MockSender) Close() {}
 
-func (s *MockSender) SendEvent(name string, startMillis, endMillis int64, source string, tags map[string]string) error {
+func (s *MockSender) SendEvent(name string, startMillis, endMillis int64, source string, tags map[string]string, setters ...event.Option) error {
 	return nil
 }
 
