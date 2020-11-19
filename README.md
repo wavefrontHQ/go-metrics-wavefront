@@ -47,9 +47,9 @@ The `WavefrontMetricsReporter` supports tagging at the host level. Any tags pass
 To create the `WavefrontMetricsReporter` you initialize it with the `sender` instance you created in the previous step along with a few other properties:
 
 ```go
-reporter := reporting.NewReporter(
+reporter := reporting.NewMetricsReporter(
   sender,
-  application.New("app", "srv"),
+  reporting.ApplicationTag(application.New("app", "srv")),
   reporting.Source("go-metrics-test"),
   reporting.Prefix("some.prefix"),
   reporting.LogErrors(true),
@@ -112,9 +112,9 @@ func main() {
 		panic(err)
 	}
 
-	reporter := reporting.NewReporter(
+	reporter := reporting.NewMetricsReporter(
 		sender,
-		application.New("app", "srv"),
+		reporting.ApplicationTag(application.New("app", "srv")),
 		reporting.Source("go-metrics-test"),
 		reporting.Prefix("some.prefix"),
 		reporting.LogErrors(true),
@@ -152,9 +152,9 @@ func main() {
 To enable golang runtime metrics reporting, set the RuntimeMetric flag in reporter to true:
 
 ```go
-	reporting.NewReporter(
+	reporting.NewMetricsReporter(
 		sender,
-		application.New("app", "srv"),
+		reporting.ApplicationTag(application.New("app", "srv")),
 		reporting.Source("go-metrics-test"),
 		reporting.Prefix("some.prefix"),
 		reporting.RuntimeMetric(true),
