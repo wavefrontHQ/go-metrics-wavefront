@@ -199,9 +199,8 @@ func NewMetricsReporter(sender wf.Sender, setters ...Option) WavefrontMetricsRep
 	return r
 }
 
-// Deprecated, use NewMetricsReporter
+// Deprecated: use NewMetricsReporter
 func NewReporter(sender wf.Sender, application application.Tags, setters ...Option) WavefrontMetricsReporter {
-	log.Printf("NewReporter is deprecated, please use NewMetricsReporter.")
 	return NewMetricsReporter(sender, append(setters, ApplicationTag(application))...)
 }
 
