@@ -55,9 +55,9 @@ func main() {
 	rtm_counter := metrics.NewCounter()            //Create a counter
 	metrics.Register("golangruntime", rtm_counter) // will create a 'some.prefix.golangruntime.count' metric with no tags
 
-	report_rtm := reporting.NewReporter(
+	report_rtm := reporting.NewMetricsReporter(
 		sender,
-		application.New("app", "srv"),
+		reporting.ApplicationTag(application.New("app", "srv")),
 		reporting.Source("go-metrics-test"),
 		reporting.Prefix("some.prefix"),
 		reporting.RuntimeMetric(true),
@@ -73,9 +73,9 @@ func main() {
 	}
 	// end: send golang runtime metric
 
-	reporting.NewReporter(
+	reporting.NewMetricsReporter(
 		sender,
-		application.New("app", "srv"),
+		reporting.ApplicationTag(application.New("app", "srv")),
 		reporting.Source("go-metrics-test"),
 		reporting.Prefix("some.prefix"),
 		reporting.LogErrors(true),
