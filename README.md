@@ -24,8 +24,8 @@ The steps for creating a `WavefrontMetricsReporter` are:
 ### 1. Set Up a Wavefront Sender
 A "Wavefront sender" is an object that implements the low-level interface for sending data to Wavefront. You can choose to send data using either the [Wavefront proxy](https://docs.wavefront.com/proxies.html) or [direct ingestion](https://docs.wavefront.com/direct_ingestion.html).
 
-* If you have already set up a Wavefront sender for another SDK that will run in the same process, use that one. (For details, see [Share a Wavefront Sender](https://github.com/wavefrontHQ/wavefront-sdk-go/blob/master/docs/sender.md#share-a-wavefront-sender).)
-* Otherwise, follow the steps in [Set Up a Wavefront Sender](https://github.com/wavefrontHQ/wavefront-sdk-go/blob/master/docs/sender.md) to configure a proxy `Sender` or a direct `Sender`.
+* If you have already set up a Wavefront sender for another SDK that will run in the same process, use that one. (For details, see [Share a Wavefront Sender](https://github.com/wavefrontHQ/wavefront-sdk-doc-sources/blob/master/go/wavefrontsender.md#share-a-wavefront-sender).)
+* Otherwise, follow the steps in [Set Up a Wavefront Sender](https://github.com/wavefrontHQ/wavefront-sdk-doc-sources/blob/master/go/wavefrontsender.md#set-up-a-wavefront-sender) to configure a proxy `Sender` or a direct `Sender`.
 
 The following example configures a direct `Sender` with default direct ingestion properties:
 
