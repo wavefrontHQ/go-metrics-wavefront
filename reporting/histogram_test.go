@@ -7,9 +7,11 @@ import (
 
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stretchr/testify/assert"
+	"github.com/wavefronthq/wavefront-sdk-go/histogram"
 )
 
-var pow10, inc100, inc1000, emptyHistogram = NewHistogram(), NewHistogram(), NewHistogram(), NewHistogram()
+var compression = histogram.Compression(5)
+var pow10, inc100, inc1000, emptyHistogram = NewHistogram(compression), NewHistogram(compression), NewHistogram(compression), NewHistogram(compression)
 
 func createPow10Histogram() {
 	pow10_ := [9]int64{0, 1, 10, 10, 100, 1000, 10000, 10000, 100000}

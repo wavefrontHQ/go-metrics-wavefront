@@ -3,6 +3,13 @@ language: go
 # workaround for case sensitive build issues with wavefrontHQ
 go_import_path: github.com/wavefronthq/go-metrics-wavefront
 
+before_install:
+  - sudo apt-get install -y ca-certificates libgnutls30
+
+addons:
+  apt:
+    update: true
+
 go:
   - "1.11.x"
   - "1.12.x"
