@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	metrics "github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics"
 	"github.com/stretchr/testify/assert"
 	"github.com/wavefronthq/wavefront-sdk-go/histogram"
 )
@@ -59,7 +59,7 @@ func TestHistogramCal(t *testing.T) {
 	assert.Equal(t, float64(0), emptyHistogram.StdDev())
 	//Percentiles
 	snapshot := inc100.Snapshot()
-	assert.Equal(t, 25.25, snapshot.Percentile(0.25))
+	assert.Equal(t, 21.0, snapshot.Percentile(0.25))
 	assert.Equal(t, 75.75, snapshot.Percentile(0.75))
 	assert.Equal(t, 98.98, snapshot.Percentile(0.98))
 	assert.Equal(t, 99.99, snapshot.Percentile(0.99))
