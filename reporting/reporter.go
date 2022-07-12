@@ -249,7 +249,7 @@ func (r *reporter) Report() {
 		}
 	})
 	actualErrorsCount := r.ErrorsCount()
-	if actualErrorsCount != lastErrorsCount {
+	if actualErrorsCount != lastErrorsCount && r.errorDebug {
 		log.Printf("!!! There was %d errors on the last reporting cycle !!!", (actualErrorsCount - lastErrorsCount))
 	}
 }
