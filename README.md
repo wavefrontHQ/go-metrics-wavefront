@@ -1,4 +1,8 @@
-# go-metrics-wavefront [![build status][ci-img]][ci] [![Go Report Card][go-report-img]][go-report] [![GoDoc][godoc-img]][godoc]
+> **Warning**
+>
+> VMware has ended active development of this project. this repository will no longer be updated.
+
+# go-metrics-wavefront [![Go Report Card][go-report-img]][go-report] [![GoDoc][godoc-img]][godoc]
 
 This is a plugin for [go-metrics](https://github.com/rcrowley/go-metrics) which adds a Wavefront reporter and a simple abstraction that supports tagging at the host and metric level.
 
